@@ -1,24 +1,26 @@
 # sodops.uz
 
-This repository contains a modern personal portfolio website for the domain `sodops.uz`.
+A professional portfolio website for Karimjonov Sodiq, a DevOps Engineer specializing in automation, infrastructure reliability, fintech systems, API security, and CI/CD.
 
 ## Features
-- Professional single-page portfolio layout
-- Responsive design for desktop and mobile
-- About, skills, projects, experience, and contact sections
-- Modern dark theme with gradient styling
-- Smooth scroll and reveal-on-scroll animations
+- Modern personal portfolio layout
+- Professional resume-focused design
+- Responsive layout for mobile and desktop
+- Sections for About, Experience, Skills, Education, Languages, and Contact
+- Clean styling with a premium DevOps aesthetic
 
-## Run locally
-Open `index.html` in any browser, or serve the folder with a local static server.
-
-Example:
+## Local preview
+Open `index.html` directly in a browser, or run:
 
 ```bash
 python -m http.server 8000
 ```
 
-Then visit: `http://localhost:8000`
+Then visit:
+
+```text
+http://localhost:8000
+```
 
 ## Customize
-Update the text in `index.html` with your personal details, skills, projects, and contact information.
+Update the text in `index.html` with your real profile, achievements, and links as needed.
