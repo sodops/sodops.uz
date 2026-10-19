@@ -247,16 +247,28 @@ export async function authenticateAdminRequest(
     const payloadJson = decodeBase64UrlString(parts[1]);
     const payload = JSON.parse(payloadJson);
 
-    // Verify expiration
+    // Verify expiration (REQUIRED: must exist, be a number, and be in the future)
     const now = Math.floor(Date.now() / 1000);
-    if (!payload.exp || payload.exp < now) {
+    if (payload.exp === undefined || payload.exp === null || typeof payload.exp !== 'number') {
+      return {
+        authenticated: false,
+        error: 'Missing required exp claim',
+      };
+    }
+    if (payload.exp < now) {
       return {
         authenticated: false,
         error: 'JWT assertion expired',
       };
     }
 
-    // Verify Issuer (iss must equal https://<CF_ACCESS_TEAM_DOMAIN>)
+    // Verify Issuer (REQUIRED: must exist and match https://<teamDomain>)
+    if (!payload.iss || typeof payload.iss !== 'string' || payload.iss.trim() === '') {
+      return {
+        authenticated: false,
+        error: 'Missing required iss claim',
+      };
+    }
     if (teamDomain) {
       const normalizedDomain = teamDomain
         .replace(/^https?:\/\//, '')
@@ -270,12 +282,18 @@ export async function authenticateAdminRequest(
       }
     }
 
-    // Verify Audience (mandatory in production)
-    const tokenAuds: string[] = Array.isArray(payload.aud) ? payload.aud : [payload.aud];
-    if (!tokenAuds.includes(expectedAud)) {
+    // Verify Audience (REQUIRED: must exist and match expectedAud)
+    if (!payload.aud) {
       return {
         authenticated: false,
-        error: 'Audience mismatch',
+        error: 'Missing required aud claim',
+      };
+    }
+    const tokenAuds: string[] = Array.isArray(payload.aud) ? payload.aud : [payload.aud];
+    if (tokenAuds.length === 0 || !tokenAuds.some(Boolean) || !tokenAuds.includes(expectedAud)) {
+      return {
+        authenticated: false,
+        error: (!tokenAuds.some(Boolean)) ? 'Missing required aud claim' : 'Audience mismatch',
       };
     }
 

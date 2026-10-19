@@ -10,15 +10,28 @@ export const onRequest = defineMiddleware(async (context, next) => {
   response.headers.set('X-Frame-Options', 'SAMEORIGIN');
 
   // 2. Strict Content-Security-Policy:
-  // Public pages strictly enforce `script-src 'self'` with ZERO 'unsafe-inline'
-  // scripts, providing guaranteed defense-in-depth against stored XSS.
+  // Public pages strictly enforce `script-src 'self' <hashes>` with ZERO 'unsafe-inline'
+  // scripts, allowing only Astro's deterministic island hydrators while preventing stored XSS.
   const isAdmin =
     context.url.pathname.startsWith('/admin') ||
     context.url.pathname.startsWith('/api/admin');
 
+  const islandHashes = [
+    "'sha256-UIrFqcaitjA3OKa9mHKajg3N+0Y7tW9+y0o3QmMFeZQ='", // astro-island prebuilt (prod)
+    "'sha256-At4sXbunobuxXv56+YxR7rwL4c3n8ubyPDiI7CIowSo='", // astro-island prebuilt (dev)
+    "'sha256-1BvDVWLr3QCC20uHhUDi27eDFVJpk1uMQJGIWKUks2I='", // client:load inline event
+    "'sha256-JyMRBoWf5xKkIHA91+XciwlF9qxXSpUtHUfMhj/UwH4='", // client:load prebuilt
+    "'sha256-gK91o4B1sIvZ5Zk5xWte6bPczb0wSS92QD05OkSpV4E='", // client:idle prebuilt
+    "'sha256-hG8Kp+fYqr9xLENy/bYaRcb9Z0JE7h55rIwwd8OVPMw='", // client:visible prebuilt
+  ];
+
+  const scriptSrcDirective = isAdmin
+    ? "script-src 'self' 'unsafe-inline'"
+    : `script-src 'self' ${islandHashes.join(' ')}`;
+
   const cspDirectives = [
     "default-src 'self'",
-    isAdmin ? "script-src 'self' 'unsafe-inline'" : "script-src 'self'",
+    scriptSrcDirective,
     "style-src 'self' 'unsafe-inline'",
     "img-src 'self' data: https:",
     "font-src 'self'",

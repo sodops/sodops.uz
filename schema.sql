@@ -49,7 +49,7 @@ CREATE TABLE IF NOT EXISTS projects (
   screenshot_url TEXT
 );
 
--- Uptime Checks Table (Planned for Phase 4)
+-- Uptime Checks Table
 CREATE TABLE IF NOT EXISTS uptime_checks (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   project_id TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
@@ -59,3 +59,14 @@ CREATE TABLE IF NOT EXISTS uptime_checks (
   latency_ms INTEGER
 );
 CREATE INDEX IF NOT EXISTS idx_uptime_checks_project_time ON uptime_checks(project_id, timestamp DESC);
+
+-- Uptime Daily Aggregates Table (Optimized D1 storage & reads)
+CREATE TABLE IF NOT EXISTS uptime_daily_aggregates (
+  project_id TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+  date TEXT NOT NULL, -- 'YYYY-MM-DD'
+  total_checks INTEGER NOT NULL DEFAULT 0,
+  successful_checks INTEGER NOT NULL DEFAULT 0,
+  avg_latency REAL NOT NULL DEFAULT 0,
+  PRIMARY KEY (project_id, date)
+);
+CREATE INDEX IF NOT EXISTS idx_aggregates_project_date ON uptime_daily_aggregates(project_id, date DESC);

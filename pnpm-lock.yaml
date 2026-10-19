@@ -81,6 +81,9 @@ importers:
       '@typescript-eslint/parser':
         specifier: ^8.71.2
         version: 8.71.2(eslint@9.39.5(jiti@2.7.0)(supports-color@10.2.2))(supports-color@10.2.2)(typescript@5.9.3)
+      esbuild:
+        specifier: ^0.28.2
+        version: 0.28.2
       eslint:
         specifier: ^9.20.1
         version: 9.39.5(jiti@2.7.0)(supports-color@10.2.2)

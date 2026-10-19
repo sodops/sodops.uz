@@ -4,6 +4,7 @@ import {
   evaluateEndpointStatus,
   computeUptimePercentage,
   pingProjectEndpoint,
+  isAllowedMonitoringUrl,
 } from './status';
 
 describe('Status Monitoring: evaluateEndpointStatus', () => {
@@ -130,5 +131,25 @@ describe('Status Monitoring: pingProjectEndpoint', () => {
 
     assert.equal(result.status, 'down');
     assert.equal(result.statusCode, 504);
+  });
+});
+
+describe('Status Monitoring: isAllowedMonitoringUrl (Domain Allowlist)', () => {
+  it('allows user-owned root domain and https scheme', () => {
+    assert.equal(isAllowedMonitoringUrl('https://sodops.uz'), true);
+    assert.equal(isAllowedMonitoringUrl('https://sodops.uz/api/health'), true);
+  });
+
+  it('allows subdomains of user-owned domain', () => {
+    assert.equal(isAllowedMonitoringUrl('https://mc.sodops.uz'), true);
+    assert.equal(isAllowedMonitoringUrl('https://preview.sodops.uz'), true);
+    assert.equal(isAllowedMonitoringUrl('http://mc.sodops.uz:8080'), true);
+  });
+
+  it('strictly rejects unowned domains and arbitrary internet URLs', () => {
+    assert.equal(isAllowedMonitoringUrl('https://google.com'), false);
+    assert.equal(isAllowedMonitoringUrl('https://github.com'), false);
+    assert.equal(isAllowedMonitoringUrl('https://fake-sodops.uz.evil.com'), false);
+    assert.equal(isAllowedMonitoringUrl('not-a-url'), false);
   });
 });

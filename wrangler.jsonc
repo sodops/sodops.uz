@@ -1,8 +1,9 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "sodops-uz",
+  "main": "src/worker.ts",
   "compatibility_date": "2026-02-24",
-  "compatibility_flags": ["nodejs_compat"],
+  "compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
   "triggers": {
     "crons": ["*/5 * * * *"],
   },
@@ -33,7 +34,6 @@
   // ],
   "vars": {
     "SITE_URL": "https://sodops.uz",
-    "ADMIN_EMAILS": "me@sodops.uz",
     "CF_ACCESS_TEAM_DOMAIN": "sodops.cloudflareaccess.com",
   },
 }

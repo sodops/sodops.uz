@@ -202,10 +202,19 @@ describe('Authentication: Cryptographic JWT Verification (RSA Key Pair & Multi-E
     signingKey: CryptoKey = privateKey,
     kid: string = 'test-key-id-1'
   ): Promise<string> {
-    const fullPayload = {
+    const fullPayload: Record<string, unknown> = {
       iss: `https://${teamDomain}`,
       ...payload,
     };
+    if ('iss' in payload && payload.iss === undefined) {
+      delete fullPayload.iss;
+    }
+    if ('aud' in payload && payload.aud === undefined) {
+      delete fullPayload.aud;
+    }
+    if ('exp' in payload && payload.exp === undefined) {
+      delete fullPayload.exp;
+    }
     const header = Buffer.from(
       JSON.stringify({ alg: 'RS256', typ: 'JWT', kid })
     ).toString('base64url');
@@ -235,6 +244,7 @@ describe('Authentication: Cryptographic JWT Verification (RSA Key Pair & Multi-E
       jwtAssertion: token,
       adminEmails,
       expectedAud,
+      teamDomain,
       publicKey,
     });
 
@@ -255,6 +265,7 @@ describe('Authentication: Cryptographic JWT Verification (RSA Key Pair & Multi-E
       jwtAssertion: token,
       adminEmails,
       expectedAud,
+      teamDomain,
       publicKey,
     });
 
@@ -278,6 +289,7 @@ describe('Authentication: Cryptographic JWT Verification (RSA Key Pair & Multi-E
       jwtAssertion: token,
       adminEmails,
       expectedAud,
+      teamDomain,
       publicKey,
     });
 
@@ -298,11 +310,33 @@ describe('Authentication: Cryptographic JWT Verification (RSA Key Pair & Multi-E
       jwtAssertion: token,
       adminEmails,
       expectedAud,
+      teamDomain,
       publicKey,
     });
 
     assert.equal(result.authenticated, false);
     assert.match(result.error!, /Audience mismatch/);
+  });
+
+  it('strictly rejects token with missing aud claim', async () => {
+    const token = await createSignedJwt({
+      email: 'me@sodops.uz',
+      aud: undefined,
+      exp: Math.floor(Date.now() / 1000) + 3600,
+    });
+
+    const result = await authenticateAdminRequest({
+      isDev: false,
+      host: 'sodops.uz',
+      jwtAssertion: token,
+      adminEmails,
+      expectedAud,
+      teamDomain,
+      publicKey,
+    });
+
+    assert.equal(result.authenticated, false);
+    assert.match(result.error!, /Missing required aud claim/);
   });
 
   it('strictly rejects token with wrong iss claim (issuer mismatch)', async () => {
@@ -327,6 +361,28 @@ describe('Authentication: Cryptographic JWT Verification (RSA Key Pair & Multi-E
     assert.match(result.error!, /Issuer mismatch/);
   });
 
+  it('strictly rejects token with missing iss claim', async () => {
+    const token = await createSignedJwt({
+      email: 'me@sodops.uz',
+      aud: expectedAud,
+      iss: undefined,
+      exp: Math.floor(Date.now() / 1000) + 3600,
+    });
+
+    const result = await authenticateAdminRequest({
+      isDev: false,
+      host: 'sodops.uz',
+      jwtAssertion: token,
+      adminEmails,
+      expectedAud,
+      teamDomain,
+      publicKey,
+    });
+
+    assert.equal(result.authenticated, false);
+    assert.match(result.error!, /Missing required iss claim/);
+  });
+
   it('strictly rejects expired token', async () => {
     const token = await createSignedJwt({
       email: 'me@sodops.uz',
@@ -340,11 +396,33 @@ describe('Authentication: Cryptographic JWT Verification (RSA Key Pair & Multi-E
       jwtAssertion: token,
       adminEmails,
       expectedAud,
+      teamDomain,
       publicKey,
     });
 
     assert.equal(result.authenticated, false);
     assert.match(result.error!, /JWT assertion expired/);
+  });
+
+  it('strictly rejects token with missing exp claim', async () => {
+    const token = await createSignedJwt({
+      email: 'me@sodops.uz',
+      aud: expectedAud,
+      exp: undefined,
+    });
+
+    const result = await authenticateAdminRequest({
+      isDev: false,
+      host: 'sodops.uz',
+      jwtAssertion: token,
+      adminEmails,
+      expectedAud,
+      teamDomain,
+      publicKey,
+    });
+
+    assert.equal(result.authenticated, false);
+    assert.match(result.error!, /Missing required exp claim/);
   });
 
   it('strictly rejects token with unauthorized email not in ADMIN_EMAILS', async () => {

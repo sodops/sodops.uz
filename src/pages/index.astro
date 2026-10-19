@@ -59,7 +59,6 @@ function formatDate(date: Date): string {
   return date.toISOString().split('T')[0];
 }
 
-// Load featured projects and live status from D1 (with resilient fallback)
 const dbFeatured = env?.DB ? await getFeaturedProjects(env.DB) : [];
 const featuredProjects =
   dbFeatured.length > 0
@@ -68,18 +67,18 @@ const featuredProjects =
         {
           name: 'sodops.uz',
           description:
-            'Personal publishing platform and status monitor built on Astro & Cloudflare Workers.',
+            'Personal publishing platform, minimal blog, and edge status monitor built on Astro & Cloudflare Workers.',
           url: 'https://sodops.uz',
           tech_tags: ['Astro', 'Cloudflare D1', 'Tailwind CSS'],
           current_status: 'up' as const,
         },
         {
-          name: 'Homelab k3s Cluster',
+          name: 'mc.sodops.uz',
           description:
-            'Lightweight multi-node Kubernetes cluster running monitoring, DNS, and containerized services.',
-          url: 'https://github.com/skarimjonoff',
-          tech_tags: ['k3s', 'Docker', 'Prometheus', 'Grafana'],
-          current_status: 'up' as const,
+            'Minecraft server status & web gateway.',
+          url: 'https://mc.sodops.uz',
+          tech_tags: ['Infrastructure', 'Self-Hosted'],
+          current_status: 'unknown' as const,
         },
       ];
 ---

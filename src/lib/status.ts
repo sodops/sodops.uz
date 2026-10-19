@@ -1,6 +1,7 @@
 import {
   getAllProjects,
   recordUptimeCheck,
+  recordDailyAggregate,
   cleanupOldUptimeChecks,
 } from './db';
 
@@ -11,6 +12,20 @@ export interface StatusCheckResult {
   statusCode: number;
   latencyMs: number;
   timestamp: string;
+}
+
+/**
+ * Strictly verifies whether a URL belongs to the user-owned domain (sodops.uz or *.sodops.uz).
+ * The cron must NEVER ping external or unowned hosts.
+ */
+export function isAllowedMonitoringUrl(urlStr: string): boolean {
+  try {
+    const parsed = new URL(urlStr);
+    const host = parsed.hostname.toLowerCase();
+    return host === 'sodops.uz' || host.endsWith('.sodops.uz');
+  } catch {
+    return false;
+  }
 }
 
 /**
@@ -104,9 +119,16 @@ export async function runStatusChecks(
   const results: StatusCheckResult[] = [];
   const now = new Date().toISOString();
 
-  // Concurrent pinging with timeout safety
+  // Concurrent pinging with timeout safety and owned URL restrictions
   const checkPromises = projects.map(async (project) => {
-    const targetUrl = project.status_url || project.url;
+    const targetUrl = (project as any).status_url || (project as any).check_url || project.url;
+    if (!targetUrl || !isAllowedMonitoringUrl(targetUrl)) {
+      console.warn(
+        `[Status Worker] Skipping unowned or invalid URL for project ${project.id}: ${targetUrl}`
+      );
+      return null;
+    }
+
     const ping = await pingProjectEndpoint(targetUrl, 4000, fetchFn);
 
     const checkResult: StatusCheckResult = {
@@ -119,7 +141,13 @@ export async function runStatusChecks(
     };
 
     try {
+      // 1. Record raw check in uptime_checks (pruned after 7 days)
       await recordUptimeCheck(env.DB, checkResult);
+
+      // 2. Increment daily aggregate in uptime_daily_aggregates
+      const todayDate = now.split('T')[0];
+      const isSuccess = ping.status !== 'down';
+      await recordDailyAggregate(env.DB, project.id, todayDate, isSuccess, ping.latencyMs);
     } catch (dbErr) {
       console.error(`[Status Worker] Failed to record check for ${project.id}:`, dbErr);
     }
@@ -129,14 +157,14 @@ export async function runStatusChecks(
 
   const settled = await Promise.allSettled(checkPromises);
   for (const item of settled) {
-    if (item.status === 'fulfilled') {
+    if (item.status === 'fulfilled' && item.value) {
       results.push(item.value);
     }
   }
 
-  // Prune history older than 30 days to keep D1 storage lean
+  // Prune history older than 7 days to keep D1 storage lean
   try {
-    await cleanupOldUptimeChecks(env.DB, 30);
+    await cleanupOldUptimeChecks(env.DB, 7);
   } catch (cleanupErr) {
     console.error('[Status Worker] Failed to cleanup old uptime records:', cleanupErr);
   }

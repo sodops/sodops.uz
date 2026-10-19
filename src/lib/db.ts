@@ -300,6 +300,7 @@ export interface DayStatus {
   date: string;
   status: 'up' | 'down' | 'degraded' | 'none';
   percent: number;
+  avgLatency?: number;
 }
 
 export interface ProjectWithStatus extends Project {
@@ -308,6 +309,7 @@ export interface ProjectWithStatus extends Project {
   latest_check_at: string | null;
   uptime_percentage_30d: number;
   uptime_history_30d: DayStatus[];
+  has_history: boolean;
 }
 
 /**
@@ -343,7 +345,8 @@ export async function getAllProjects(db?: D1Database): Promise<Project[]> {
 }
 
 /**
- * Retrieves projects with live uptime status, recent latency, and 30-day history bars.
+ * Retrieves projects with live uptime status, recent latency, and 30-day history bars
+ * read efficiently from `uptime_daily_aggregates` rather than scanning raw check logs.
  */
 export async function getProjectsWithStatus(
   db?: D1Database
@@ -369,39 +372,28 @@ export async function getProjectsWithStatus(
     latestMap.set(row.project_id as string, row);
   }
 
-  // 2. Fetch daily aggregates for past 30 days
-  const dailyQuery = `
-    SELECT 
-      project_id,
-      DATE(timestamp) as check_date,
-      status,
-      COUNT(*) as count
-    FROM uptime_checks
-    WHERE timestamp >= datetime('now', '-30 days')
-    GROUP BY project_id, check_date, status
-    ORDER BY check_date ASC;
+  // 2. Fetch daily aggregates for past 30 days from uptime_daily_aggregates
+  const aggQuery = `
+    SELECT project_id, date, total_checks, successful_checks, avg_latency
+    FROM uptime_daily_aggregates
+    WHERE date >= date('now', '-29 days')
+    ORDER BY date ASC;
   `;
-  const { results: dailyResults } = await db.prepare(dailyQuery).all();
+  const { results: aggResults } = await db.prepare(aggQuery).all();
 
-  // Group daily results by project_id -> date -> status counts
-  const projectDailyMap = new Map<string, Map<string, { up: number; down: number; degraded: number }>>();
-  for (const row of dailyResults || []) {
+  // Group daily aggregates by project_id -> date -> aggregate row
+  const projectAggMap = new Map<string, Map<string, { total_checks: number; successful_checks: number; avg_latency: number }>>();
+  for (const row of aggResults || []) {
     const pid = row.project_id as string;
-    const date = row.check_date as string;
-    const status = row.status as 'up' | 'down' | 'degraded';
-    const count = Number(row.count) || 0;
-
-    if (!projectDailyMap.has(pid)) {
-      projectDailyMap.set(pid, new Map());
+    const date = row.date as string;
+    if (!projectAggMap.has(pid)) {
+      projectAggMap.set(pid, new Map());
     }
-    const dateMap = projectDailyMap.get(pid)!;
-    if (!dateMap.has(date)) {
-      dateMap.set(date, { up: 0, down: 0, degraded: 0 });
-    }
-    const current = dateMap.get(date)!;
-    if (status in current) {
-      current[status] += count;
-    }
+    projectAggMap.get(pid)!.set(date, {
+      total_checks: Number(row.total_checks) || 0,
+      successful_checks: Number(row.successful_checks) || 0,
+      avg_latency: Math.round(Number(row.avg_latency) || 0),
+    });
   }
 
   // Generate 30-day date series ending today (UTC)
@@ -415,34 +407,44 @@ export async function getProjectsWithStatus(
 
   return projects.map((p) => {
     const latest = latestMap.get(p.id);
-    const dateMap = projectDailyMap.get(p.id);
+    const dateMap = projectAggMap.get(p.id);
 
     let totalChecks = 0;
     let upChecks = 0;
 
     const uptime_history_30d: DayStatus[] = dateSeries.map((date) => {
-      const counts = dateMap?.get(date);
-      if (!counts) {
+      const agg = dateMap?.get(date);
+      if (!agg || agg.total_checks === 0) {
         return { date, status: 'none', percent: 100 };
       }
 
-      const dayTotal = counts.up + counts.degraded + counts.down;
-      totalChecks += dayTotal;
-      upChecks += counts.up + counts.degraded; // degraded counts towards availability
+      totalChecks += agg.total_checks;
+      upChecks += agg.successful_checks;
 
       let status: 'up' | 'down' | 'degraded' = 'up';
-      if (counts.down > 0) {
+      if (agg.successful_checks === 0 && agg.total_checks > 0) {
         status = 'down';
-      } else if (counts.degraded > 0) {
+      } else if (agg.successful_checks < agg.total_checks) {
         status = 'degraded';
       }
 
-      const percent = dayTotal > 0 ? Math.round(((counts.up + counts.degraded) / dayTotal) * 100) : 100;
-      return { date, status, percent };
+      const percent =
+        agg.total_checks > 0
+          ? Math.round((agg.successful_checks / agg.total_checks) * 100)
+          : 100;
+
+      return {
+        date,
+        status,
+        percent,
+        avgLatency: agg.avg_latency,
+      };
     });
 
-    const uptime_percentage_30d =
-      totalChecks > 0 ? Number(((upChecks / totalChecks) * 100).toFixed(2)) : 100;
+    const has_history = totalChecks > 0;
+    const uptime_percentage_30d = has_history
+      ? Number(((upChecks / totalChecks) * 100).toFixed(2))
+      : 100;
 
     return {
       ...p,
@@ -451,22 +453,62 @@ export async function getProjectsWithStatus(
       latest_check_at: (latest?.timestamp as string) || null,
       uptime_percentage_30d,
       uptime_history_30d,
+      has_history,
     };
   });
 }
 
 /**
  * Retrieves featured projects with their current status for the homepage.
+ * Strictly reads only projects + latest check per project, completely bypassing
+ * daily aggregates for minimal D1 read consumption.
  */
 export async function getFeaturedProjects(
   db?: D1Database
 ): Promise<ProjectWithStatus[]> {
-  const all = await getProjectsWithStatus(db);
-  return all.filter((p) => p.featured === 1);
+  if (!db) return [];
+  const { results: rawProjects } = await db
+    .prepare('SELECT * FROM projects WHERE featured = 1 ORDER BY sort_order ASC, name ASC')
+    .all();
+  if (!rawProjects || rawProjects.length === 0) return [];
+
+  const projects = rawProjects.map((row: any) => ({
+    ...row,
+    tech_tags: parseTechTags(row.tech_tags),
+  })) as Project[];
+
+  // Fetch only the latest check per project (bypasses aggregate table scan)
+  const latestQuery = `
+    SELECT u.project_id, u.status, u.status_code, u.latency_ms, u.timestamp
+    FROM uptime_checks u
+    INNER JOIN (
+      SELECT project_id, MAX(id) as max_id
+      FROM uptime_checks
+      GROUP BY project_id
+    ) latest ON u.id = latest.max_id;
+  `;
+  const { results: latestResults } = await db.prepare(latestQuery).all();
+  const latestMap = new Map<string, any>();
+  for (const row of latestResults || []) {
+    latestMap.set(row.project_id as string, row);
+  }
+
+  return projects.map((p) => {
+    const latest = latestMap.get(p.id);
+    return {
+      ...p,
+      current_status: (latest?.status as any) || 'unknown',
+      latest_latency_ms: latest ? Number(latest.latency_ms) : null,
+      latest_check_at: (latest?.timestamp as string) || null,
+      uptime_percentage_30d: 100,
+      uptime_history_30d: [],
+      has_history: false,
+    };
+  });
 }
 
 /**
- * Records an uptime check for a project in D1.
+ * Records an uptime check for a project in D1 (raw log, retained 7 days).
  */
 export async function recordUptimeCheck(
   db: D1Database,
@@ -488,11 +530,36 @@ export async function recordUptimeCheck(
 }
 
 /**
- * Purges uptime checks older than N days to keep D1 storage lean.
+ * Updates or creates daily aggregated uptime stats for a project.
+ * Uses SQLite ON CONFLICT UPSERT with incremental moving average for latency.
+ */
+export async function recordDailyAggregate(
+  db: D1Database,
+  projectId: string,
+  date: string, // YYYY-MM-DD
+  isSuccessful: boolean,
+  latencyMs: number
+): Promise<void> {
+  const successCount = isSuccessful ? 1 : 0;
+  await db
+    .prepare(
+      `INSERT INTO uptime_daily_aggregates (project_id, date, total_checks, successful_checks, avg_latency)
+       VALUES (?, ?, 1, ?, ?)
+       ON CONFLICT(project_id, date) DO UPDATE SET
+         avg_latency = ((uptime_daily_aggregates.avg_latency * uptime_daily_aggregates.total_checks) + excluded.avg_latency) / (uptime_daily_aggregates.total_checks + 1),
+         successful_checks = uptime_daily_aggregates.successful_checks + excluded.successful_checks,
+         total_checks = uptime_daily_aggregates.total_checks + 1;`
+    )
+    .bind(projectId, date, successCount, latencyMs)
+    .run();
+}
+
+/**
+ * Purges raw uptime checks older than N days (default: 7 days) to minimize D1 storage.
  */
 export async function cleanupOldUptimeChecks(
   db: D1Database,
-  days = 30
+  days = 7
 ): Promise<number> {
   const res = await db
     .prepare("DELETE FROM uptime_checks WHERE timestamp < datetime('now', '-' || ? || ' days')")

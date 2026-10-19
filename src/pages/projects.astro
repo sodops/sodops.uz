@@ -23,13 +23,14 @@ const degradedServices = projects.filter((p) => p.current_status === 'degraded')
 const overallStatus =
   downServices > 0 ? 'down' : degradedServices > 0 ? 'degraded' : 'up';
 
+const projectsWithHistory = projects.filter((p) => p.has_history);
 const avgUptime =
-  totalServices > 0
+  projectsWithHistory.length > 0
     ? (
-        projects.reduce((acc, p) => acc + p.uptime_percentage_30d, 0) /
-        totalServices
+        projectsWithHistory.reduce((acc, p) => acc + p.uptime_percentage_30d, 0) /
+        projectsWithHistory.length
       ).toFixed(2)
-    : '100.00';
+    : null;
 ---
 
 <BaseLayout
@@ -91,7 +92,7 @@ const avgUptime =
         <div class="flex items-center gap-4 text-xs font-mono text-neutral-500 dark:text-neutral-400">
           <span>{totalServices} Monitored Endpoints</span>
           <span>&middot;</span>
-          <span>{avgUptime}% Avg 30-Day Uptime</span>
+          <span>{avgUptime ? `${avgUptime}% Avg 30-Day Uptime` : 'Awaiting Initial Checks'}</span>
         </div>
       </div>
     </section>
@@ -139,7 +140,7 @@ const avgUptime =
                         ? strings.projects.statusDegraded
                         : project.current_status === 'down'
                           ? strings.projects.statusDown
-                          : 'Unknown'}
+                          : 'No data yet'}
                   </span>
 
                   <h2 class="text-base font-semibold text-neutral-900 dark:text-neutral-100 font-sans">
@@ -176,11 +177,11 @@ const avgUptime =
                       </span>
                     </span>
                   )}
-                  <span>&middot;</span>
+                  {project.latest_latency_ms !== null && <span>&middot;</span>}
                   <span>
                     {strings.projects.uptime30d}:{' '}
                     <span class="text-emerald-600 dark:text-emerald-400 font-medium">
-                      {project.uptime_percentage_30d}%
+                      {project.has_history ? `${project.uptime_percentage_30d}%` : 'No data yet'}
                     </span>
                   </span>
                   {project.repo_url && (
@@ -216,29 +217,42 @@ const avgUptime =
 
               {/* 30-Day Uptime Bar Graph */}
               <div class="pt-3 border-t border-neutral-200/60 dark:border-neutral-800/60 space-y-1.5">
-                <div class="flex items-center gap-[3px] h-6 w-full" aria-label="30-day uptime bars">
-                  {project.uptime_history_30d.map((day) => (
-                    <div
-                      class:list={[
-                        'flex-1 h-full rounded-[2px] transition-transform hover:scale-y-125 cursor-pointer',
-                        day.status === 'up'
-                          ? 'bg-emerald-500/80 hover:bg-emerald-400'
-                          : day.status === 'degraded'
-                            ? 'bg-amber-500/80 hover:bg-amber-400'
-                            : day.status === 'down'
-                              ? 'bg-red-500/80 hover:bg-red-400'
-                              : 'bg-neutral-200/70 dark:bg-neutral-800/70 hover:bg-neutral-400',
-                      ]}
-                      title={`${day.date}: ${day.status.toUpperCase()} (${day.percent}% available)`}
-                    />
-                  ))}
-                </div>
+                {project.has_history ? (
+                  <>
+                    <div class="flex items-center gap-[3px] h-6 w-full" aria-label="30-day uptime bars">
+                      {project.uptime_history_30d.map((day) => (
+                        <div
+                          class:list={[
+                            'flex-1 h-full rounded-[2px] transition-transform hover:scale-y-125 cursor-pointer',
+                            day.status === 'up'
+                              ? 'bg-emerald-500/80 hover:bg-emerald-400'
+                              : day.status === 'degraded'
+                                ? 'bg-amber-500/80 hover:bg-amber-400'
+                                : day.status === 'down'
+                                  ? 'bg-red-500/80 hover:bg-red-400'
+                                  : 'bg-neutral-200/50 dark:bg-neutral-800/50',
+                          ]}
+                          title={
+                            day.status === 'none'
+                              ? `${day.date}: No checks recorded`
+                              : `${day.date}: ${day.status.toUpperCase()} (${day.percent}% available${day.avgLatency !== undefined ? `, avg ${day.avgLatency}ms` : ''})`
+                          }
+                        />
+                      ))}
+                    </div>
 
-                <div class="flex items-center justify-between text-[10px] font-mono text-neutral-400 dark:text-neutral-500">
-                  <span>30 days ago</span>
-                  <span>Checked every 5m via Cloudflare Cron</span>
-                  <span>Today</span>
-                </div>
+                    <div class="flex items-center justify-between text-[10px] font-mono text-neutral-400 dark:text-neutral-500">
+                      <span>30 days ago</span>
+                      <span>Checked every 5m via Cloudflare Cron</span>
+                      <span>Today</span>
+                    </div>
+                  </>
+                ) : (
+                  <div class="py-2.5 px-3 rounded bg-neutral-100/60 dark:bg-neutral-800/40 text-[11px] font-mono text-neutral-500 dark:text-neutral-400 flex items-center justify-between">
+                    <span>Uptime history: No data yet</span>
+                    <span class="text-[10px] text-neutral-400">Awaiting scheduled cron checks</span>
+                  </div>
+                )}
               </div>
             </article>
           ))
