@@ -117,7 +117,7 @@ await Astro.cache.invalidate({ tags: [''blog''] });
 
 This purges Cloudflare CDN''s edge cache across every data center globally in milliseconds, giving readers instantaneous access to the new content.', '<p>Modern web architecture often forces a false choice: static sites that require full CI/CD rebuilds to publish a single typo fix, or heavy monolithic containers running on costly always-on servers.</p>
 <p>By pairing <strong>Astro</strong> with <strong>Cloudflare Workers</strong>, <strong>D1</strong> (distributed edge SQLite), and <strong>R2</strong> (S3-compatible object storage), we can achieve the best of both worlds: instant publishing from a web UI, ultra-fast TTFB globally, and zero server maintenance within the free tier.</p>
-<h2 id="user-content-why-astro-on-cloudflare">Why Astro on Cloudflare?</h2>
+<h2 id="why-astro-on-cloudflare">Why Astro on Cloudflare?</h2>
 <p>Astro''s <code>@astrojs/cloudflare</code> adapter compiles pages into native Cloudflare Worker entrypoints. Unlike Node.js containers that may take seconds to spin up, Workers execute on V8 isolates with virtually zero cold-start overhead (&#x3C; 5ms).</p>
 <p>Furthermore, Astro''s hybrid rendering allows static assets to be served directly from Cloudflare''s global CDN while dynamic API and admin routes execute on-demand at the edge nearest to the user.</p>
 <pre><code>+-----------------------------------------------------------+
@@ -135,7 +135,7 @@ This purges Cloudflare CDN''s edge cache across every data center globally in mi
 |          [Cloudflare D1] [Cloudflare R2]                  |
 +-----------------------------------------------------------+
 </code></pre>
-<h2 id="user-content-configuring-cloudflare-d1-with-typescript">Configuring Cloudflare D1 with TypeScript</h2>
+<h2 id="configuring-cloudflare-d1-with-typescript">Configuring Cloudflare D1 with TypeScript</h2>
 <p>Cloudflare D1 runs SQLite directly at the edge. To type your D1 bindings in Astro, augment the <code>App.Locals</code> interface:</p>
 <pre><code class="language-typescript"><span class="hljs-comment">// src/env.d.ts</span>
 <span class="hljs-keyword">declare</span> <span class="hljs-keyword">namespace</span> <span class="hljs-title">App</span> {
@@ -156,7 +156,7 @@ This purges Cloudflare CDN''s edge cache across every data center globally in mi
   <span class="hljs-string">''SELECT id, title, slug, published_at FROM posts WHERE published = 1 ORDER BY published_at DESC LIMIT 10''</span>
 ).<span class="hljs-title">all</span>();
 </code></pre>
-<h2 id="user-content-handling-image-uploads-to-r2">Handling Image Uploads to R2</h2>
+<h2 id="handling-image-uploads-to-r2">Handling Image Uploads to R2</h2>
 <p>When uploading images through a private admin panel, we can stream the <code>FormData</code> file buffer directly to R2 without storing anything on disk:</p>
 <pre><code class="language-typescript"><span class="hljs-keyword">import</span> { env } <span class="hljs-keyword">from</span> <span class="hljs-string">''cloudflare:workers''</span>;
 
@@ -185,7 +185,7 @@ This purges Cloudflare CDN''s edge cache across every data center globally in mi
   });
 };
 </code></pre>
-<h2 id="user-content-tag-based-cache-invalidation">Tag-Based Cache Invalidation</h2>
+<h2 id="tag-based-cache-invalidation">Tag-Based Cache Invalidation</h2>
 <p>Instead of having to wait for a 5-minute CDN cache TTL, Astro 7 introduces route-level cache tagging. When a post is updated in the admin panel, the API simply invalidates the <code>blog</code> tag:</p>
 <pre><code class="language-typescript"><span class="hljs-comment">// Inside post update API handler</span>
 <span class="hljs-keyword">await</span> <span class="hljs-title">Astro</span>.<span class="hljs-property">cache</span>.<span class="hljs-title">invalidate</span>({ <span class="hljs-attr">tags</span>: [<span class="hljs-string">''blog''</span>] });
@@ -284,7 +284,7 @@ On a k3s cluster, deploying Promtail as a `DaemonSet` with memory limits capped 
 
 Observability does not require gigabytes of overhead. By being deliberate about scrape intervals, dropping extraneous time series, and tuning TSDB retention, you can achieve enterprise-grade visibility on edge nodes running on modest hardware.', '<p>Running Kubernetes in edge environments or homelab setups (such as single-board computers or low-spec VPS instances) often runs into a common issue: the standard <code>kube-prometheus-stack</code> can consume more memory than the actual workloads running on the cluster.</p>
 <p>In this post, I want to outline a minimal, resource-conscious observability stack for <strong>k3s</strong> that gives you actionable metrics and dashboards while consuming less than 350MB of RAM total.</p>
-<h2 id="user-content-the-architecture">The Architecture</h2>
+<h2 id="the-architecture">The Architecture</h2>
 <p>Instead of deploying the full Prometheus Operator with alertmanager, pushgateway, and multiple sidecars, we strip the architecture down to three core components:</p>
 <ol>
 <li><strong>Prometheus (Agent Mode)</strong> or a single-replica Prometheus with short retention (3-7 days).</li>
@@ -305,7 +305,7 @@ Observability does not require gigabytes of overhead. By being deliberate about 
 |                              +---------------+     |
 +----------------------------------------------------+
 </code></pre>
-<h2 id="user-content-configuring-prometheus-retention">Configuring Prometheus Retention</h2>
+<h2 id="configuring-prometheus-retention">Configuring Prometheus Retention</h2>
 <p>The biggest RAM and disk eater in default Prometheus setups is chunk storage and retention time. When running on low-resource nodes, limit local retention strictly:</p>
 <pre><code class="language-yaml"><span class="hljs-attr">apiVersion:</span> <span class="hljs-string">apps/v1</span>
 <span class="hljs-attr">kind:</span> <span class="hljs-string">Deployment</span>
@@ -333,7 +333,7 @@ Observability does not require gigabytes of overhead. By being deliberate about 
               <span class="hljs-attr">memory:</span> <span class="hljs-string">''300Mi''</span>
               <span class="hljs-attr">cpu:</span> <span class="hljs-string">''250m''</span>
 </code></pre>
-<h2 id="user-content-dropping-unneeded-metrics">Dropping Unneeded Metrics</h2>
+<h2 id="dropping-unneeded-metrics">Dropping Unneeded Metrics</h2>
 <p>By default, <code>kube-state-metrics</code> emits thousands of gauge metrics you likely never look at on a small cluster. In your <code>scrape_configs</code>, drop verbose label dimensions:</p>
 <pre><code class="language-yaml"><span class="hljs-attr">scrape_configs:</span>
   <span class="hljs-bullet">-</span> <span class="hljs-attr">job_name:</span> <span class="hljs-string">''kubernetes-nodes''</span>
@@ -347,10 +347,10 @@ Observability does not require gigabytes of overhead. By being deliberate about 
         <span class="hljs-attr">regex:</span> <span class="hljs-string">''(node_network_receive_multicast_total|node_network_transmit_colls_total)''</span>
         <span class="hljs-attr">action:</span> <span class="hljs-string">drop</span>
 </code></pre>
-<h2 id="user-content-logging-with-loki-and-promtail">Logging with Loki and Promtail</h2>
+<h2 id="logging-with-loki-and-promtail">Logging with Loki and Promtail</h2>
 <p>For log aggregation, running full Elasticsearch or OpenSearch on a small cluster is out of the question. Grafana Loki is designed specifically for this use case because it indexes metadata (labels), not the log payload itself.</p>
 <p>On a k3s cluster, deploying Promtail as a <code>DaemonSet</code> with memory limits capped at 50MB per node forwards container logs directly to Loki without causing OOM kills.</p>
-<h2 id="user-content-conclusion">Conclusion</h2>
+<h2 id="conclusion">Conclusion</h2>
 <p>Observability does not require gigabytes of overhead. By being deliberate about scrape intervals, dropping extraneous time series, and tuning TSDB retention, you can achieve enterprise-grade visibility on edge nodes running on modest hardware.</p>', 'Setting up lightweight metrics and logging on edge Kubernetes clusters without eating all your RAM.', '', 0, '2026-10-15T09:00:00Z', 4);
 INSERT OR IGNORE INTO post_tags (post_id, tag_id) VALUES ('post_minimal_observability_k3s', 'tag_k3s');
 INSERT OR IGNORE INTO post_tags (post_id, tag_id) VALUES ('post_minimal_observability_k3s', 'tag_prometheus');
@@ -402,10 +402,10 @@ Speed is not just an engineering metric; it is a sign of respect for your reader
 <li>To read your thoughts on a technical challenge they are currently solving.</li>
 <li>To find a quick way to inspect your code or get in touch.</li>
 </ol>
-<h2 id="user-content-high-information-density">High Information Density</h2>
+<h2 id="high-information-density">High Information Density</h2>
 <p>Text-first design prioritizes the reading experience. By setting a narrow reading column (~65ch to 720px wide), choosing an uncompromisingly legible typeface like <strong>Inter</strong>, and using monospace fonts for code and system badges, the page respects the visitor''s time.</p>
 <p>There are no popups asking you to subscribe to a newsletter, no cookie consent banners (because there is no tracking), and no layout shifts while web fonts and hero assets trickle in over a spotty mobile network.</p>
-<h2 id="user-content-the-antfume-inspiration">The antfu.me Inspiration</h2>
+<h2 id="the-antfume-inspiration">The antfu.me Inspiration</h2>
 <p>Sites like Anthony Fu''s <a href="https://antfu.me">antfu.me</a> demonstrate the enduring beauty of this philosophy. A short, honest prose introduction with inline links immediately invites exploration. The navigation is featherweight; dark mode transitions seamlessly without flash; and interactions (like a keyboard command palette) are subtle aids rather than distracting spectacles.</p>
 <pre><code>+----------------------------------------------------+
 | ~ sodops.uz       Blog  Projects  Uses  Now  [RSS] |
@@ -422,7 +422,7 @@ Speed is not just an engineering metric; it is a sign of respect for your reader
 |                                                    |
 +----------------------------------------------------+
 </code></pre>
-<h2 id="user-content-performance-as-a-design-feature">Performance as a Design Feature</h2>
+<h2 id="performance-as-a-design-feature">Performance as a Design Feature</h2>
 <p>When your homepage transfers less than 20 kilobytes of compressed assets and executes zero bloated runtime libraries, it renders almost instantaneously anywhere in the world.</p>
 <p>Speed is not just an engineering metric; it is a sign of respect for your readers.</p>', 'Ditching heavy hero banners, complex design patterns, and bloated client JavaScript for clean typography and high information density.', '', 0, '2026-09-20T11:00:00Z', 3);
 INSERT OR IGNORE INTO post_tags (post_id, tag_id) VALUES ('post_why_text_first_websites', 'tag_design');

@@ -103,6 +103,120 @@ html.dark .astro-code span {
   overflow-x: auto;
 }
 
+/* Highlight.js Dual Light/Dark Theme Support */
+pre code.hljs {
+  display: block;
+  overflow-x: auto;
+  padding: 1rem;
+  font-family: var(--font-mono);
+  font-size: 0.8125rem;
+  line-height: 1.6;
+}
+
+/* Light Mode Tokens (GitHub / Neutral) */
+.hljs {
+  color: #24292f;
+  background: transparent;
+}
+.hljs-comment,
+.hljs-quote {
+  color: #6e7781;
+  font-style: italic;
+}
+.hljs-keyword,
+.hljs-selector-tag,
+.hljs-subst {
+  color: #cf222e;
+  font-weight: 500;
+}
+.hljs-string,
+.hljs-title,
+.hljs-section,
+.hljs-attribute,
+.hljs-literal,
+.hljs-template-tag,
+.hljs-template-variable,
+.hljs-type,
+.hljs-addition {
+  color: #0a7c4a;
+}
+.hljs-number,
+.hljs-variable {
+  color: #0550ae;
+}
+.hljs-function,
+.hljs-title.function_ {
+  color: #8250df;
+}
+.hljs-params {
+  color: #24292f;
+}
+.hljs-attr {
+  color: #116329;
+}
+.hljs-bullet,
+.hljs-link {
+  color: #0550ae;
+}
+.hljs-meta {
+  color: #953800;
+}
+.hljs-emphasis {
+  font-style: italic;
+}
+.hljs-strong {
+  font-weight: bold;
+}
+
+/* Dark Mode Tokens */
+html.dark .hljs {
+  color: #e6edf3;
+  background: transparent;
+}
+html.dark .hljs-comment,
+html.dark .hljs-quote {
+  color: #8b949e;
+  font-style: italic;
+}
+html.dark .hljs-keyword,
+html.dark .hljs-selector-tag,
+html.dark .hljs-subst {
+  color: #ff7b72;
+  font-weight: 500;
+}
+html.dark .hljs-string,
+html.dark .hljs-title,
+html.dark .hljs-section,
+html.dark .hljs-attribute,
+html.dark .hljs-literal,
+html.dark .hljs-template-tag,
+html.dark .hljs-template-variable,
+html.dark .hljs-type,
+html.dark .hljs-addition {
+  color: #7ee787;
+}
+html.dark .hljs-number,
+html.dark .hljs-variable {
+  color: #79c0ff;
+}
+html.dark .hljs-function,
+html.dark .hljs-title.function_ {
+  color: #d2a8ff;
+}
+html.dark .hljs-params {
+  color: #e6edf3;
+}
+html.dark .hljs-attr {
+  color: #7ee787;
+}
+html.dark .hljs-bullet,
+html.dark .hljs-link {
+  color: #79c0ff;
+}
+html.dark .hljs-meta {
+  color: #ffa657;
+}
+
 /* Respect Reduced Motion Site-Wide */
 @media (prefers-reduced-motion: reduce) {
   *,

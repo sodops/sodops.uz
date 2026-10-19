@@ -69,4 +69,25 @@ describe('Markdown Processing & Sanitization', () => {
     });
     assert.deepEqual(headings[2], { depth: 2, text: 'Conclusion', slug: 'conclusion' });
   });
+
+  it('renders heading ids matching TOC anchors without user-content- prefix', async () => {
+    const markdown = '## Architecture Overview\n\n[Jump to Architecture](#architecture-overview)';
+    const output = await renderAndSanitizeMarkdown(markdown);
+    const headings = extractHeadings(markdown);
+
+    // Verify heading id is clean and matches TOC slug
+    assert.equal(headings[0].slug, 'architecture-overview');
+    assert.ok(
+      output.includes('<h2 id="architecture-overview">Architecture Overview</h2>'),
+      'Heading id must match TOC anchor slug without user-content- prefix'
+    );
+    assert.ok(
+      !output.includes('user-content-architecture-overview'),
+      'Must not contain user-content- prefix'
+    );
+    assert.ok(
+      output.includes('<a href="#architecture-overview">Jump to Architecture</a>'),
+      'Anchor href must match heading id'
+    );
+  });
 });

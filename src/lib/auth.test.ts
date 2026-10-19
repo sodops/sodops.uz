@@ -1,7 +1,12 @@
 import { describe, it, before } from 'node:test';
 import assert from 'node:assert/strict';
 import { generateKeyPairSync } from 'node:crypto';
-import { isDevAuthBypassAllowed, authenticateAdminRequest } from './auth';
+import {
+  isDevAuthBypassAllowed,
+  authenticateAdminRequest,
+  parseAllowedEmails,
+  clearJwksCache,
+} from './auth';
 
 describe('Authentication: isDevAuthBypassAllowed', () => {
   it('allows bypass when isDev is true and host is localhost', () => {
@@ -24,19 +29,43 @@ describe('Authentication: isDevAuthBypassAllowed', () => {
   });
 });
 
-describe('Authentication: authenticateAdminRequest', () => {
-  const adminEmail = 'me@sodops.uz';
+describe('Authentication: parseAllowedEmails', () => {
+  it('parses comma-separated string of emails', () => {
+    const emails = parseAllowedEmails('me@sodops.uz, Sodiq@Github.com , second@domain.org');
+    assert.deepEqual(emails, ['me@sodops.uz', 'sodiq@github.com', 'second@domain.org']);
+  });
+
+  it('parses array of emails', () => {
+    const emails = parseAllowedEmails(['me@sodops.uz', 'sodiq@github.com']);
+    assert.deepEqual(emails, ['me@sodops.uz', 'sodiq@github.com']);
+  });
+
+  it('falls back to adminEmail', () => {
+    const emails = parseAllowedEmails(undefined, 'me@sodops.uz');
+    assert.deepEqual(emails, ['me@sodops.uz']);
+  });
+
+  it('returns empty array when neither provided', () => {
+    const emails = parseAllowedEmails(undefined, undefined);
+    assert.deepEqual(emails, []);
+  });
+});
+
+describe('Authentication: Production Fail-Closed Rules', () => {
+  const adminEmails = 'me@sodops.uz,sodiq@github.com';
+  const expectedAud = 'aud-test-123';
+  const teamDomain = 'sodops.cloudflareaccess.com';
 
   it('authenticates via dev bypass on localhost in dev mode', async () => {
     const result = await authenticateAdminRequest({
       isDev: true,
       host: 'localhost:4321',
       jwtAssertion: null,
-      adminEmail,
+      adminEmails,
       devBypassAuth: true,
     });
     assert.equal(result.authenticated, true);
-    assert.equal(result.email, adminEmail);
+    assert.equal(result.email, 'me@sodops.uz');
   });
 
   it('fails closed when dev bypass attempted in production', async () => {
@@ -44,11 +73,39 @@ describe('Authentication: authenticateAdminRequest', () => {
       isDev: false,
       host: 'sodops.uz',
       jwtAssertion: null,
-      adminEmail,
+      adminEmails,
+      expectedAud,
+      teamDomain,
       devBypassAuth: true,
     });
     assert.equal(result.authenticated, false);
     assert.match(result.error!, /rejected/i);
+  });
+
+  it('fails closed when CF_ACCESS_AUD is missing in production', async () => {
+    const result = await authenticateAdminRequest({
+      isDev: false,
+      host: 'sodops.uz',
+      jwtAssertion: 'a.b.c',
+      adminEmails,
+      expectedAud: undefined,
+      teamDomain,
+    });
+    assert.equal(result.authenticated, false);
+    assert.match(result.error!, /missing CF_ACCESS_AUD/);
+  });
+
+  it('fails closed when CF_ACCESS_TEAM_DOMAIN is missing in production (and no key provided)', async () => {
+    const result = await authenticateAdminRequest({
+      isDev: false,
+      host: 'sodops.uz',
+      jwtAssertion: 'a.b.c',
+      adminEmails,
+      expectedAud,
+      teamDomain: undefined,
+    });
+    assert.equal(result.authenticated, false);
+    assert.match(result.error!, /missing CF_ACCESS_TEAM_DOMAIN/);
   });
 
   it('fails closed when JWT is missing in production', async () => {
@@ -56,44 +113,57 @@ describe('Authentication: authenticateAdminRequest', () => {
       isDev: false,
       host: 'sodops.uz',
       jwtAssertion: null,
-      adminEmail,
+      adminEmails,
+      expectedAud,
+      teamDomain,
     });
     assert.equal(result.authenticated, false);
     assert.match(result.error!, /Missing Cf-Access-Jwt-Assertion/);
   });
 
-  it('fails closed when email does not match ADMIN_EMAIL', async () => {
-    const payload = {
-      email: 'attacker@evil.com',
-      exp: Math.floor(Date.now() / 1000) + 3600,
-    };
-    const token = `header.${Buffer.from(JSON.stringify(payload)).toString('base64url')}.sig`;
+  it('strictly rejects tokens with alg: none or unsupported algorithms', async () => {
+    const header = Buffer.from(JSON.stringify({ alg: 'none', typ: 'JWT' })).toString('base64url');
+    const payload = Buffer.from(
+      JSON.stringify({
+        email: 'me@sodops.uz',
+        aud: expectedAud,
+        exp: Math.floor(Date.now() / 1000) + 3600,
+      })
+    ).toString('base64url');
+    const token = `${header}.${payload}.sig`;
 
     const result = await authenticateAdminRequest({
       isDev: false,
       host: 'sodops.uz',
       jwtAssertion: token,
-      adminEmail,
+      adminEmails,
+      expectedAud,
+      teamDomain,
     });
     assert.equal(result.authenticated, false);
-    assert.match(result.error!, /Unauthorized email/);
+    assert.match(result.error!, /Unsupported JWT algorithm/);
   });
 });
 
-describe('Authentication: Cryptographic JWT Verification (RSA Key Pair)', () => {
-  const adminEmail = 'me@sodops.uz';
+describe('Authentication: Cryptographic JWT Verification (RSA Key Pair & Multi-Email)', () => {
+  const adminEmails = 'me@sodops.uz,sodiq@github.com';
   const expectedAud = 'cf-access-aud-sodops-uz';
+  const teamDomain = 'sodops.cloudflareaccess.com';
   let publicKey: CryptoKey;
   let privateKey: CryptoKey;
   let attackerPrivateKey: CryptoKey;
+  let testJwk: JsonWebKey;
 
   before(async () => {
+    clearJwksCache();
     // Generate valid RSA key pair
     const keys: any = generateKeyPairSync('rsa' as any, {
       modulusLength: 2048,
       publicKeyEncoding: { type: 'spki', format: 'jwk' },
       privateKeyEncoding: { type: 'pkcs8', format: 'jwk' },
     });
+
+    testJwk = { ...keys.publicKey, kid: 'test-key-id-1', alg: 'RS256' };
 
     publicKey = await crypto.subtle.importKey(
       'jwk',
@@ -129,11 +199,12 @@ describe('Authentication: Cryptographic JWT Verification (RSA Key Pair)', () => 
 
   async function createSignedJwt(
     payload: Record<string, unknown>,
-    signingKey: CryptoKey = privateKey
+    signingKey: CryptoKey = privateKey,
+    kid: string = 'test-key-id-1'
   ): Promise<string> {
-    const header = Buffer.from(JSON.stringify({ alg: 'RS256', typ: 'JWT' })).toString(
-      'base64url'
-    );
+    const header = Buffer.from(
+      JSON.stringify({ alg: 'RS256', typ: 'JWT', kid })
+    ).toString('base64url');
     const encodedPayload = Buffer.from(JSON.stringify(payload)).toString('base64url');
     const data = new TextEncoder().encode(`${header}.${encodedPayload}`);
 
@@ -147,9 +218,9 @@ describe('Authentication: Cryptographic JWT Verification (RSA Key Pair)', () => 
     return `${header}.${encodedPayload}.${encodedSig}`;
   }
 
-  it('valid signed token with matching email and aud passes authentication', async () => {
+  it('valid signed token with primary email passes', async () => {
     const token = await createSignedJwt({
-      email: adminEmail,
+      email: 'me@sodops.uz',
       aud: expectedAud,
       exp: Math.floor(Date.now() / 1000) + 3600,
     });
@@ -158,19 +229,39 @@ describe('Authentication: Cryptographic JWT Verification (RSA Key Pair)', () => 
       isDev: false,
       host: 'sodops.uz',
       jwtAssertion: token,
-      adminEmail,
+      adminEmails,
       expectedAud,
       publicKey,
     });
 
     assert.equal(result.authenticated, true);
-    assert.equal(result.email, adminEmail);
+    assert.equal(result.email, 'me@sodops.uz');
+  });
+
+  it('valid signed token with secondary GitHub email passes', async () => {
+    const token = await createSignedJwt({
+      email: 'sodiq@github.com',
+      aud: expectedAud,
+      exp: Math.floor(Date.now() / 1000) + 3600,
+    });
+
+    const result = await authenticateAdminRequest({
+      isDev: false,
+      host: 'sodops.uz',
+      jwtAssertion: token,
+      adminEmails,
+      expectedAud,
+      publicKey,
+    });
+
+    assert.equal(result.authenticated, true);
+    assert.equal(result.email, 'sodiq@github.com');
   });
 
   it('strictly rejects token signed with attacker key (wrong signature)', async () => {
     const token = await createSignedJwt(
       {
-        email: adminEmail,
+        email: 'me@sodops.uz',
         aud: expectedAud,
         exp: Math.floor(Date.now() / 1000) + 3600,
       },
@@ -181,7 +272,7 @@ describe('Authentication: Cryptographic JWT Verification (RSA Key Pair)', () => 
       isDev: false,
       host: 'sodops.uz',
       jwtAssertion: token,
-      adminEmail,
+      adminEmails,
       expectedAud,
       publicKey,
     });
@@ -192,7 +283,7 @@ describe('Authentication: Cryptographic JWT Verification (RSA Key Pair)', () => 
 
   it('strictly rejects token with mismatched aud claim', async () => {
     const token = await createSignedJwt({
-      email: adminEmail,
+      email: 'me@sodops.uz',
       aud: 'wrong-audience-tag',
       exp: Math.floor(Date.now() / 1000) + 3600,
     });
@@ -201,7 +292,7 @@ describe('Authentication: Cryptographic JWT Verification (RSA Key Pair)', () => 
       isDev: false,
       host: 'sodops.uz',
       jwtAssertion: token,
-      adminEmail,
+      adminEmails,
       expectedAud,
       publicKey,
     });
@@ -212,7 +303,7 @@ describe('Authentication: Cryptographic JWT Verification (RSA Key Pair)', () => 
 
   it('strictly rejects expired token', async () => {
     const token = await createSignedJwt({
-      email: adminEmail,
+      email: 'me@sodops.uz',
       aud: expectedAud,
       exp: Math.floor(Date.now() / 1000) - 120, // expired 2 minutes ago
     });
@@ -221,7 +312,7 @@ describe('Authentication: Cryptographic JWT Verification (RSA Key Pair)', () => 
       isDev: false,
       host: 'sodops.uz',
       jwtAssertion: token,
-      adminEmail,
+      adminEmails,
       expectedAud,
       publicKey,
     });
@@ -230,7 +321,7 @@ describe('Authentication: Cryptographic JWT Verification (RSA Key Pair)', () => 
     assert.match(result.error!, /JWT assertion expired/);
   });
 
-  it('strictly rejects token with unauthorized email', async () => {
+  it('strictly rejects token with unauthorized email not in ADMIN_EMAILS', async () => {
     const token = await createSignedJwt({
       email: 'intruder@domain.com',
       aud: expectedAud,
@@ -241,7 +332,7 @@ describe('Authentication: Cryptographic JWT Verification (RSA Key Pair)', () => 
       isDev: false,
       host: 'sodops.uz',
       jwtAssertion: token,
-      adminEmail,
+      adminEmails,
       expectedAud,
       publicKey,
     });
@@ -250,17 +341,36 @@ describe('Authentication: Cryptographic JWT Verification (RSA Key Pair)', () => 
     assert.match(result.error!, /Unauthorized email address/);
   });
 
-  it('strictly rejects when token is missing', async () => {
+  it('successfully fetches and verifies public key via mock JWKS endpoint', async () => {
+    const token = await createSignedJwt({
+      email: 'me@sodops.uz',
+      aud: expectedAud,
+      exp: Math.floor(Date.now() / 1000) + 3600,
+    });
+
+    // Mock fetch for JWKS certs URL
+    const mockFetch = async (url: string | URL | Request) => {
+      const urlStr = String(url);
+      if (urlStr.includes('/cdn-cgi/access/certs')) {
+        return new Response(JSON.stringify({ keys: [testJwk] }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        });
+      }
+      return new Response('Not found', { status: 404 });
+    };
+
     const result = await authenticateAdminRequest({
       isDev: false,
       host: 'sodops.uz',
-      jwtAssertion: null,
-      adminEmail,
+      jwtAssertion: token,
+      adminEmails,
       expectedAud,
-      publicKey,
+      teamDomain,
+      fetchFn: mockFetch as any,
     });
 
-    assert.equal(result.authenticated, false);
-    assert.match(result.error!, /Missing Cf-Access-Jwt-Assertion/);
+    assert.equal(result.authenticated, true);
+    assert.equal(result.email, 'me@sodops.uz');
   });
 });

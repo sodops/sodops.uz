@@ -29,6 +29,7 @@
   // ],
   "vars": {
     "SITE_URL": "https://sodops.uz",
-    "ADMIN_EMAIL": "me@sodops.uz",
+    "ADMIN_EMAILS": "me@sodops.uz",
+    "CF_ACCESS_TEAM_DOMAIN": "sodops.cloudflareaccess.com",
   },
 }

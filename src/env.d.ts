@@ -7,7 +7,9 @@ declare namespace Cloudflare {
     UPLOADS_BUCKET?: import('@cloudflare/workers-types').R2Bucket;
     SESSION?: import('@cloudflare/workers-types').KVNamespace;
     ADMIN_EMAIL?: string;
+    ADMIN_EMAILS?: string;
     CF_ACCESS_AUD?: string;
+    CF_ACCESS_TEAM_DOMAIN?: string;
     DEV_BYPASS_AUTH?: string;
     SITE_URL?: string;
     [key: string]: any;

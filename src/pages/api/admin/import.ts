@@ -11,8 +11,9 @@ export const POST: APIRoute = async ({ request }) => {
     isDev: import.meta.env.DEV,
     host: request.headers.get('host'),
     jwtAssertion: request.headers.get('Cf-Access-Jwt-Assertion'),
-    adminEmail: env.ADMIN_EMAIL || 'me@sodops.uz',
+    adminEmails: env.ADMIN_EMAILS || env.ADMIN_EMAIL || 'me@sodops.uz',
     expectedAud: env.CF_ACCESS_AUD,
+    teamDomain: env.CF_ACCESS_TEAM_DOMAIN,
     devBypassAuth: env.DEV_BYPASS_AUTH === 'true' || import.meta.env.DEV,
   });
 

@@ -11,12 +11,16 @@ const auth = await authenticateAdminRequest({
   isDev: import.meta.env.DEV,
   host: Astro.request.headers.get('host'),
   jwtAssertion: Astro.request.headers.get('Cf-Access-Jwt-Assertion'),
-  adminEmail: env.ADMIN_EMAIL || 'me@sodops.uz',
+  adminEmails: env.ADMIN_EMAILS || env.ADMIN_EMAIL || 'me@sodops.uz',
   expectedAud: env.CF_ACCESS_AUD,
+  teamDomain: env.CF_ACCESS_TEAM_DOMAIN,
   devBypassAuth: env.DEV_BYPASS_AUTH === 'true' || import.meta.env.DEV,
 });
 
 const isAuthenticated = auth.authenticated;
+if (!isAuthenticated) {
+  Astro.response.status = 401;
+}
 const initialPosts = isAuthenticated && env.DB ? await getAllPosts(env.DB) : [];
 ---
 

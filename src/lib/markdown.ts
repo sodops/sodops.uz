@@ -4,6 +4,7 @@ import remarkGfm from 'remark-gfm';
 import remarkRehype from 'remark-rehype';
 import rehypeSlug from 'rehype-slug';
 import rehypeHighlight from 'rehype-highlight';
+import rehypeParse from 'rehype-parse';
 import rehypeSanitize, { defaultSchema } from 'rehype-sanitize';
 import rehypeStringify from 'rehype-stringify';
 
@@ -18,6 +19,7 @@ import rehypeStringify from 'rehype-stringify';
  */
 export const sharedSanitizeSchema = {
   ...defaultSchema,
+  clobberPrefix: '',
   attributes: {
     ...defaultSchema.attributes,
     '*': ['className', 'id'],
@@ -70,8 +72,7 @@ export async function renderAndSanitizeMarkdown(markdown: string): Promise<strin
  */
 export async function sanitizeHtml(html: string): Promise<string> {
   const file = await unified()
-    .use(remarkParse)
-    .use(remarkRehype, { allowDangerousHtml: true })
+    .use(rehypeParse, { fragment: true })
     .use(rehypeSanitize as any, sharedSanitizeSchema)
     .use(rehypeStringify)
     .process(html);
