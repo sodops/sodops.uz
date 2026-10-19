@@ -217,6 +217,39 @@ html.dark .hljs-meta {
   color: #ffa657;
 }
 
+/* Astro View Transitions */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation-duration: 160ms;
+  animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+::view-transition-old(root) {
+  animation-name: astroFadeOut;
+}
+
+::view-transition-new(root) {
+  animation-name: astroFadeIn;
+}
+
+@keyframes astroFadeOut {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+@keyframes astroFadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
 /* Respect Reduced Motion Site-Wide */
 @media (prefers-reduced-motion: reduce) {
   *,

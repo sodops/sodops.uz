@@ -46,7 +46,10 @@ CREATE TABLE IF NOT EXISTS projects (
   featured INTEGER DEFAULT 0,
   sort_order INTEGER DEFAULT 0,
   allow_iframe INTEGER DEFAULT 0,
-  screenshot_url TEXT
+  screenshot_url TEXT,
+  check_type TEXT NOT NULL DEFAULT 'http', -- 'http' | 'tcp' | 'minecraft'
+  check_host TEXT,
+  check_port INTEGER
 );
 
 -- Uptime Checks Table
@@ -56,7 +59,8 @@ CREATE TABLE IF NOT EXISTS uptime_checks (
   timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
   status TEXT NOT NULL, -- 'up', 'down', 'degraded'
   status_code INTEGER,
-  latency_ms INTEGER
+  latency_ms INTEGER,
+  metadata TEXT -- JSON string for extra telemetry (e.g. {"version": "1.20", "players_online": 3, "players_max": 20})
 );
 CREATE INDEX IF NOT EXISTS idx_uptime_checks_project_time ON uptime_checks(project_id, timestamp DESC);
 

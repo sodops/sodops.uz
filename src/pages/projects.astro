@@ -206,6 +206,30 @@ const avgUptime =
                 {project.description}
               </p>
 
+              {/* Minecraft or Protocol Metadata Badge */}
+              {(() => {
+                if (!project.latest_metadata) return null;
+                try {
+                  const meta = JSON.parse(project.latest_metadata);
+                  if (project.check_type === 'minecraft') {
+                    return (
+                      <div class="flex items-center gap-2 text-[11px] font-mono text-neutral-600 dark:text-neutral-400 bg-neutral-100/80 dark:bg-neutral-800/60 px-2.5 py-1 rounded border border-neutral-200/50 dark:border-neutral-700/50 w-fit">
+                        <span class="text-emerald-600 dark:text-emerald-400 font-semibold">
+                          {meta.version || 'Minecraft'}
+                        </span>
+                        <span>&middot;</span>
+                        <span>
+                          {meta.players_online ?? 0}/{meta.players_max ?? 0} online
+                        </span>
+                      </div>
+                    );
+                  }
+                } catch {
+                  return null;
+                }
+                return null;
+              })()}
+
               {/* Tech Tags */}
               <div class="flex flex-wrap gap-1.5 pt-1">
                 {project.tech_tags.map((tag) => (

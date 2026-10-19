@@ -5,6 +5,13 @@ import {
   computeUptimePercentage,
   pingProjectEndpoint,
   isAllowedMonitoringUrl,
+  isAllowedMonitoringHost,
+  encodeVarInt,
+  decodeVarInt,
+  buildMinecraftHandshakePacket,
+  parseMinecraftStatusResponse,
+  pingMinecraftEndpoint,
+  pingTcpEndpoint,
 } from './status';
 
 describe('Status Monitoring: evaluateEndpointStatus', () => {
@@ -72,7 +79,7 @@ describe('Status Monitoring: computeUptimePercentage', () => {
   });
 });
 
-describe('Status Monitoring: pingProjectEndpoint', () => {
+describe('Status Monitoring: pingProjectEndpoint (HTTP)', () => {
   it('pings healthy endpoint and records status up', async () => {
     const mockFetch = async () => new Response('OK', { status: 200 });
 
@@ -134,22 +141,258 @@ describe('Status Monitoring: pingProjectEndpoint', () => {
   });
 });
 
-describe('Status Monitoring: isAllowedMonitoringUrl (Domain Allowlist)', () => {
-  it('allows user-owned root domain and https scheme', () => {
+describe('Status Monitoring: Strict Domain Allowlist & Adversarial Attack Resistance', () => {
+  it('allows valid root domain and subdomains', () => {
+    assert.equal(isAllowedMonitoringHost('sodops.uz'), true);
+    assert.equal(isAllowedMonitoringHost('mc.sodops.uz'), true);
+    assert.equal(isAllowedMonitoringHost('preview.sodops.uz'), true);
+    assert.equal(isAllowedMonitoringHost('k3s.cluster.sodops.uz'), true);
+
     assert.equal(isAllowedMonitoringUrl('https://sodops.uz'), true);
     assert.equal(isAllowedMonitoringUrl('https://sodops.uz/api/health'), true);
-  });
-
-  it('allows subdomains of user-owned domain', () => {
     assert.equal(isAllowedMonitoringUrl('https://mc.sodops.uz'), true);
-    assert.equal(isAllowedMonitoringUrl('https://preview.sodops.uz'), true);
-    assert.equal(isAllowedMonitoringUrl('http://mc.sodops.uz:8080'), true);
+    assert.equal(isAllowedMonitoringUrl('http://mc.sodops.uz:8080/status'), true);
   });
 
-  it('strictly rejects unowned domains and arbitrary internet URLs', () => {
-    assert.equal(isAllowedMonitoringUrl('https://google.com'), false);
-    assert.equal(isAllowedMonitoringUrl('https://github.com'), false);
-    assert.equal(isAllowedMonitoringUrl('https://fake-sodops.uz.evil.com'), false);
-    assert.equal(isAllowedMonitoringUrl('not-a-url'), false);
+  it('strictly rejects unowned prefix domains (evilsodops.uz)', () => {
+    assert.equal(isAllowedMonitoringHost('evilsodops.uz'), false);
+    assert.equal(isAllowedMonitoringHost('not-sodops.uz'), false);
+    assert.equal(isAllowedMonitoringUrl('https://evilsodops.uz'), false);
+    assert.equal(isAllowedMonitoringUrl('https://evilsodops.uz/path'), false);
+  });
+
+  it('strictly rejects evil suffix domains (sodops.uz.evil.com)', () => {
+    assert.equal(isAllowedMonitoringHost('sodops.uz.evil.com'), false);
+    assert.equal(isAllowedMonitoringHost('mc.sodops.uz.attacker.com'), false);
+    assert.equal(isAllowedMonitoringUrl('https://sodops.uz.evil.com'), false);
+    assert.equal(isAllowedMonitoringUrl('https://mc.sodops.uz.attacker.com/status'), false);
+  });
+
+  it('strictly rejects userinfo tricks (https://sodops.uz@evil.com)', () => {
+    assert.equal(isAllowedMonitoringUrl('https://sodops.uz@evil.com'), false);
+    assert.equal(isAllowedMonitoringUrl('https://sodops.uz:password@evil.com'), false);
+    assert.equal(isAllowedMonitoringUrl('https://mc.sodops.uz@attacker.com/steal'), false);
+    assert.equal(isAllowedMonitoringHost('sodops.uz@evil.com'), false);
+  });
+
+  it('strictly rejects IPv4 and IPv6 literals', () => {
+    assert.equal(isAllowedMonitoringHost('127.0.0.1'), false);
+    assert.equal(isAllowedMonitoringHost('104.21.36.121'), false);
+    assert.equal(isAllowedMonitoringHost('192.168.1.1'), false);
+    assert.equal(isAllowedMonitoringHost('::1'), false);
+    assert.equal(isAllowedMonitoringHost('[::1]'), false);
+
+    assert.equal(isAllowedMonitoringUrl('http://127.0.0.1'), false);
+    assert.equal(isAllowedMonitoringUrl('https://104.21.36.121/health'), false);
+    assert.equal(isAllowedMonitoringUrl('http://[::1]:8080'), false);
+  });
+
+  it('strictly rejects non-HTTP schemes and malformed URLs', () => {
+    assert.equal(isAllowedMonitoringUrl('javascript:alert(1)'), false);
+    assert.equal(isAllowedMonitoringUrl('file:///etc/passwd'), false);
+    assert.equal(isAllowedMonitoringUrl('ftp://sodops.uz'), false);
+    assert.equal(isAllowedMonitoringUrl(''), false);
+    assert.equal(isAllowedMonitoringHost(''), false);
+  });
+});
+
+describe('Minecraft Protocol: VarInt Encoding and Decoding', () => {
+  it('correctly encodes and decodes single-byte VarInts', () => {
+    for (const val of [0, 1, 2, 42, 127]) {
+      const encoded = encodeVarInt(val);
+      assert.equal(encoded.length, 1);
+      const decoded = decodeVarInt(new Uint8Array(encoded));
+      assert.equal(decoded.value, val);
+      assert.equal(decoded.bytesRead, 1);
+    }
+  });
+
+  it('correctly encodes and decodes multi-byte VarInts (e.g. ports, protocol versions)', () => {
+    for (const val of [128, 255, 765, 25565, 2097151]) {
+      const encoded = encodeVarInt(val);
+      assert.ok(encoded.length > 1);
+      const decoded = decodeVarInt(new Uint8Array(encoded));
+      assert.equal(decoded.value, val);
+      assert.equal(decoded.bytesRead, encoded.length);
+    }
+  });
+
+  it('throws on incomplete or corrupt VarInt buffer', () => {
+    assert.throws(() => decodeVarInt(new Uint8Array([0x80])), /Incomplete VarInt/);
+    assert.throws(
+      () => decodeVarInt(new Uint8Array([0x80, 0x80, 0x80, 0x80, 0x80, 0x80])),
+      /VarInt is too big/
+    );
+  });
+});
+
+describe('Minecraft SLP: Handshake Packet & Status Response Parser', () => {
+  it('builds a valid Minecraft SLP handshake packet', () => {
+    const packet = buildMinecraftHandshakePacket('mc.sodops.uz', 25565, 765);
+    assert.ok(packet instanceof Uint8Array);
+    assert.ok(packet.length > 10);
+
+    // First byte is packet length
+    const { value: len, bytesRead } = decodeVarInt(packet);
+    assert.equal(len + bytesRead, packet.length);
+    // Packet ID is 0x00
+    assert.equal(packet[bytesRead], 0x00);
+  });
+
+  it('parses valid Minecraft status response without exposing player names', () => {
+    const rawPayload = JSON.stringify({
+      version: {
+        name: 'Paper 1.20.4',
+        protocol: 765,
+      },
+      players: {
+        max: 20,
+        online: 3,
+        sample: [
+          { name: 'SecretAdminPlayer', id: '11111111-2222-3333-4444-555555555555' },
+          { name: 'Sodiq', id: 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee' },
+        ],
+      },
+      description: { text: 'Welcome to sodops.uz Minecraft' },
+    });
+
+    const jsonBytes = new TextEncoder().encode(rawPayload);
+    const strLenBytes = encodeVarInt(jsonBytes.length);
+    const packetIdBytes = [0x00];
+    const payload = [...packetIdBytes, ...strLenBytes, ...jsonBytes];
+    const packetLenBytes = encodeVarInt(payload.length);
+    const fullBuffer = new Uint8Array([...packetLenBytes, ...payload]);
+
+    const parsed = parseMinecraftStatusResponse(fullBuffer);
+    assert.equal(parsed.version, 'Paper 1.20.4');
+    assert.equal(parsed.players_online, 3);
+    assert.equal(parsed.players_max, 20);
+
+    // Ensure player names/samples are NOT part of the parsed object
+    assert.equal((parsed as any).sample, undefined);
+    assert.equal((parsed as any).players, undefined);
+  });
+
+  it('handles empty player list or missing version gracefully', () => {
+    const rawPayload = JSON.stringify({
+      version: {},
+      players: {},
+    });
+
+    const jsonBytes = new TextEncoder().encode(rawPayload);
+    const strLenBytes = encodeVarInt(jsonBytes.length);
+    const packetIdBytes = [0x00];
+    const payload = [...packetIdBytes, ...strLenBytes, ...jsonBytes];
+    const packetLenBytes = encodeVarInt(payload.length);
+    const fullBuffer = new Uint8Array([...packetLenBytes, ...payload]);
+
+    const parsed = parseMinecraftStatusResponse(fullBuffer);
+    assert.equal(parsed.version, 'Unknown');
+    assert.equal(parsed.players_online, 0);
+    assert.equal(parsed.players_max, 0);
+  });
+
+  it('throws on corrupted JSON or truncated response', () => {
+    assert.throws(
+      () => parseMinecraftStatusResponse(new Uint8Array([0x01])),
+      /too short/
+    );
+  });
+});
+
+describe('Minecraft Check Execution: Socket Handshake, Timeouts & Fallback', () => {
+  it('successfully executes Minecraft SLP handshake and returns up with metadata', async () => {
+    const mockJson = JSON.stringify({
+      version: { name: 'Paper 1.20.4' },
+      players: { online: 5, max: 20 },
+    });
+    const jsonBytes = new TextEncoder().encode(mockJson);
+    const strLenBytes = encodeVarInt(jsonBytes.length);
+    const payload = [0x00, ...strLenBytes, ...jsonBytes];
+    const packetLenBytes = encodeVarInt(payload.length);
+    const serverResponseBytes = new Uint8Array([...packetLenBytes, ...payload]);
+
+    const mockSocket = {
+      opened: Promise.resolve(),
+      closed: Promise.resolve(),
+      readable: new ReadableStream<Uint8Array>({
+        start(controller) {
+          controller.enqueue(serverResponseBytes);
+          controller.close();
+        },
+      }),
+      writable: new WritableStream<Uint8Array>({
+        write() {},
+      }),
+      close() {},
+    };
+
+    const mockConnect = () => mockSocket;
+
+    const result = await pingMinecraftEndpoint('mc.sodops.uz', 25565, 3000, mockConnect as any);
+
+    assert.equal(result.status, 'up');
+    assert.equal(result.statusCode, 200);
+    assert.ok(result.latencyMs >= 0);
+    assert.ok(result.metadata);
+
+    const meta = JSON.parse(result.metadata!);
+    assert.equal(meta.version, 'Paper 1.20.4');
+    assert.equal(meta.players_online, 5);
+    assert.equal(meta.players_max, 20);
+  });
+
+  it('falls back to plain TCP connect = up when SLP handshake fails after connection', async () => {
+    // Socket connects, but stream immediately closes without SLP response
+    const mockSocket = {
+      opened: Promise.resolve(),
+      closed: Promise.resolve(),
+      readable: new ReadableStream<Uint8Array>({
+        start(controller) {
+          controller.close();
+        },
+      }),
+      writable: new WritableStream<Uint8Array>({
+        write() {},
+      }),
+      close() {},
+    };
+
+    const mockConnect = () => mockSocket;
+
+    const result = await pingMinecraftEndpoint('mc.sodops.uz', 25565, 3000, mockConnect as any);
+
+    // Must be up with TCP Only fallback
+    assert.equal(result.status, 'up');
+    assert.equal(result.statusCode, 200);
+    assert.ok(result.metadata);
+
+    const meta = JSON.parse(result.metadata!);
+    assert.equal(meta.version, 'TCP Only');
+    assert.equal(meta.players_online, 0);
+  });
+
+  it('marks status down when TCP connection fails or times out', async () => {
+    const mockConnect = () => {
+      throw new Error('Connection refused (NXDOMAIN / host down)');
+    };
+
+    const result = await pingMinecraftEndpoint('mc.sodops.uz', 25565, 3000, mockConnect as any);
+
+    assert.equal(result.status, 'down');
+    assert.equal(result.statusCode, 0);
+    assert.equal(result.metadata, null);
+  });
+
+  it('correctly tests plain TCP pingEndpoint', async () => {
+    const mockSocket = {
+      opened: Promise.resolve(),
+      close() {},
+    };
+    const mockConnect = () => mockSocket;
+
+    const result = await pingTcpEndpoint('sodops.uz', 443, 3000, mockConnect as any);
+    assert.equal(result.status, 'up');
+    assert.equal(result.statusCode, 200);
   });
 });

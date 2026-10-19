@@ -79,10 +79,21 @@
     });
   }
 
+  // 4. Command palette trigger button
+  function setupCommandPaletteTrigger() {
+    var trigger = document.getElementById('cmd-k-trigger');
+    if (!trigger || trigger.dataset.bound) return;
+    trigger.dataset.bound = 'true';
+    trigger.addEventListener('click', function () {
+      window.dispatchEvent(new CustomEvent('open-command-palette'));
+    });
+  }
+
   function init() {
     setupThemeToggle();
     setupEmail();
     setupBlogInteractions();
+    setupCommandPaletteTrigger();
   }
 
   if (document.readyState === 'loading') {

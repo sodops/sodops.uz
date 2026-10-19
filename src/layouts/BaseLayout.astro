@@ -2,6 +2,7 @@
 import { ClientRouter } from 'astro:transitions';
 import Header from '../components/Header.astro';
 import Footer from '../components/Footer.astro';
+import CommandPalette from '../components/CommandPalette';
 import { strings } from '../lib/strings';
 import '../styles/global.css';
 
@@ -77,6 +78,7 @@ const canonicalURL = new URL(Astro.url.pathname, Astro.site || 'https://sodops.u
     </main>
 
     <Footer />
+    <CommandPalette client:idle />
     <script is:inline src="/app.js" defer></script>
   </body>
 </html>

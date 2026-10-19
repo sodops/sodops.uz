@@ -20,9 +20,13 @@ export const onRequest = defineMiddleware(async (context, next) => {
     "'sha256-UIrFqcaitjA3OKa9mHKajg3N+0Y7tW9+y0o3QmMFeZQ='", // astro-island prebuilt (prod)
     "'sha256-At4sXbunobuxXv56+YxR7rwL4c3n8ubyPDiI7CIowSo='", // astro-island prebuilt (dev)
     "'sha256-1BvDVWLr3QCC20uHhUDi27eDFVJpk1uMQJGIWKUks2I='", // client:load inline event
-    "'sha256-JyMRBoWf5xKkIHA91+XciwlF9qxXSpUtHUfMhj/UwH4='", // client:load prebuilt
-    "'sha256-gK91o4B1sIvZ5Zk5xWte6bPczb0wSS92QD05OkSpV4E='", // client:idle prebuilt
-    "'sha256-hG8Kp+fYqr9xLENy/bYaRcb9Z0JE7h55rIwwd8OVPMw='", // client:visible prebuilt
+    "'sha256-xIb/Pa7FUshAu4ihwjchYcQpyCI8eS8kt40GpOAYCz8='", // client:idle inline event
+    "'sha256-0O7iB6zr9x0r6X6eWYITC9V5q+yWCGAoFvcysBGbY9Q='", // client:visible inline event
+    "'sha256-kmZE/W8I1iuTnl1b3yqzv9/DQZenPngd3NjSKMQl7y0='", // client:media inline event
+    "'sha256-Y8t0ntteBwH+PqGKUyjWW3CAk+BNJKSoQc0xZ68FjhM='", // client:only inline event
+    "'sha256-JyMRBoWf5xKkIHA91+XciwlF9qxXSpUtHUfMhj/UwH4='", // client:load module
+    "'sha256-gK91o4B1sIvZ5Zk5xWte6bPczb0wSS92QD05OkSpV4E='", // client:idle module
+    "'sha256-hG8Kp+fYqr9xLENy/bYaRcb9Z0JE7h55rIwwd8OVPMw='", // client:visible module
   ];
 
   const scriptSrcDirective = isAdmin

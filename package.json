@@ -7,7 +7,7 @@
   },
   "scripts": {
     "dev": "astro dev",
-    "build": "astro build",
+    "build": "astro build && node scripts/verify-csp-hashes.mjs",
     "preview": "astro preview",
     "typecheck": "astro check",
     "test": "npx --yes tsx --test src/lib/*.test.ts",

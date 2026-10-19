@@ -18,7 +18,10 @@ INSERT INTO projects (
   tech_tags,
   featured,
   sort_order,
-  allow_iframe
+  allow_iframe,
+  check_type,
+  check_host,
+  check_port
 ) VALUES 
 (
   'proj_sodops_uz',
@@ -30,7 +33,10 @@ INSERT INTO projects (
   '["Astro", "Cloudflare D1", "Tailwind CSS", "TypeScript"]',
   1,
   1,
-  1
+  1,
+  'http',
+  'sodops.uz',
+  443
 ),
 (
   'proj_mc_sodops_uz',
@@ -38,9 +44,12 @@ INSERT INTO projects (
   'Minecraft server status & web gateway.',
   'https://mc.sodops.uz',
   NULL,
-  'https://mc.sodops.uz',
+  NULL,
   '["Infrastructure", "Self-Hosted"]',
   1,
   2,
-  0
+  0,
+  'minecraft',
+  'mc.sodops.uz',
+  25565
 );

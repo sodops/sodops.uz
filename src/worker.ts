@@ -33,6 +33,7 @@ export default {
                 status: r.status,
                 statusCode: r.statusCode,
                 latency: `${r.latencyMs}ms`,
+                metadata: r.metadata,
               }))
             )
           );

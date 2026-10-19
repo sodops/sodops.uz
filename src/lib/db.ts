@@ -285,6 +285,9 @@ export interface Project {
   sort_order: number;
   allow_iframe: number;
   screenshot_url: string | null;
+  check_type?: 'http' | 'tcp' | 'minecraft';
+  check_host?: string | null;
+  check_port?: number | null;
 }
 
 export interface UptimeCheck {
@@ -294,6 +297,7 @@ export interface UptimeCheck {
   status: 'up' | 'down' | 'degraded';
   status_code: number;
   latency_ms: number;
+  metadata?: string | null;
 }
 
 export interface DayStatus {
@@ -307,6 +311,7 @@ export interface ProjectWithStatus extends Project {
   current_status: 'up' | 'down' | 'degraded' | 'unknown';
   latest_latency_ms: number | null;
   latest_check_at: string | null;
+  latest_metadata?: string | null;
   uptime_percentage_30d: number;
   uptime_history_30d: DayStatus[];
   has_history: boolean;
@@ -358,7 +363,7 @@ export async function getProjectsWithStatus(
 
   // 1. Fetch latest check per project
   const latestQuery = `
-    SELECT u.project_id, u.status, u.status_code, u.latency_ms, u.timestamp
+    SELECT u.project_id, u.status, u.status_code, u.latency_ms, u.timestamp, u.metadata
     FROM uptime_checks u
     INNER JOIN (
       SELECT project_id, MAX(id) as max_id
@@ -451,6 +456,7 @@ export async function getProjectsWithStatus(
       current_status: (latest?.status as any) || 'unknown',
       latest_latency_ms: latest ? Number(latest.latency_ms) : null,
       latest_check_at: (latest?.timestamp as string) || null,
+      latest_metadata: (latest?.metadata as string) || null,
       uptime_percentage_30d,
       uptime_history_30d,
       has_history,
@@ -479,7 +485,7 @@ export async function getFeaturedProjects(
 
   // Fetch only the latest check per project (bypasses aggregate table scan)
   const latestQuery = `
-    SELECT u.project_id, u.status, u.status_code, u.latency_ms, u.timestamp
+    SELECT u.project_id, u.status, u.status_code, u.latency_ms, u.timestamp, u.metadata
     FROM uptime_checks u
     INNER JOIN (
       SELECT project_id, MAX(id) as max_id
@@ -500,6 +506,7 @@ export async function getFeaturedProjects(
       current_status: (latest?.status as any) || 'unknown',
       latest_latency_ms: latest ? Number(latest.latency_ms) : null,
       latest_check_at: (latest?.timestamp as string) || null,
+      latest_metadata: (latest?.metadata as string) || null,
       uptime_percentage_30d: 100,
       uptime_history_30d: [],
       has_history: false,
@@ -518,14 +525,15 @@ export async function recordUptimeCheck(
     statusCode: number;
     latencyMs: number;
     timestamp?: string;
+    metadata?: string | null;
   }
 ): Promise<void> {
   const now = check.timestamp || new Date().toISOString();
   await db
     .prepare(
-      'INSERT INTO uptime_checks (project_id, timestamp, status, status_code, latency_ms) VALUES (?, ?, ?, ?, ?)'
+      'INSERT INTO uptime_checks (project_id, timestamp, status, status_code, latency_ms, metadata) VALUES (?, ?, ?, ?, ?, ?)'
     )
-    .bind(check.projectId, now, check.status, check.statusCode, check.latencyMs)
+    .bind(check.projectId, now, check.status, check.statusCode, check.latencyMs, check.metadata || null)
     .run();
 }
 
