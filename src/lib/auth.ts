@@ -256,6 +256,20 @@ export async function authenticateAdminRequest(
       };
     }
 
+    // Verify Issuer (iss must equal https://<CF_ACCESS_TEAM_DOMAIN>)
+    if (teamDomain) {
+      const normalizedDomain = teamDomain
+        .replace(/^https?:\/\//, '')
+        .replace(/\/+$/, '');
+      const expectedIss = `https://${normalizedDomain}`;
+      if (payload.iss !== expectedIss) {
+        return {
+          authenticated: false,
+          error: `Issuer mismatch: expected '${expectedIss}', got '${payload.iss}'`,
+        };
+      }
+    }
+
     // Verify Audience (mandatory in production)
     const tokenAuds: string[] = Array.isArray(payload.aud) ? payload.aud : [payload.aud];
     if (!tokenAuds.includes(expectedAud)) {

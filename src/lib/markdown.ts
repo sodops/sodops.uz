@@ -8,6 +8,43 @@ import rehypeParse from 'rehype-parse';
 import rehypeSanitize, { defaultSchema } from 'rehype-sanitize';
 import rehypeStringify from 'rehype-stringify';
 
+import typescript from 'highlight.js/lib/languages/typescript';
+import javascript from 'highlight.js/lib/languages/javascript';
+import bash from 'highlight.js/lib/languages/bash';
+import sql from 'highlight.js/lib/languages/sql';
+import yaml from 'highlight.js/lib/languages/yaml';
+import json from 'highlight.js/lib/languages/json';
+import rust from 'highlight.js/lib/languages/rust';
+import python from 'highlight.js/lib/languages/python';
+import dockerfile from 'highlight.js/lib/languages/dockerfile';
+import diff from 'highlight.js/lib/languages/diff';
+
+/**
+ * Explicit, curated list of syntax highlighting languages.
+ * Disabling autodetection (detect: false) and scoping to these 10 languages
+ * dramatically reduces save-time CPU time and worker bundle size.
+ */
+export const allowedHighlightLanguages: Record<string, any> = {
+  typescript,
+  ts: typescript,
+  javascript,
+  js: javascript,
+  bash,
+  sh: bash,
+  shell: bash,
+  sql,
+  yaml,
+  yml: yaml,
+  json,
+  rust,
+  rs: rust,
+  python,
+  py: python,
+  dockerfile,
+  docker: dockerfile,
+  diff,
+};
+
 /**
  * Shared Markdown Sanitization Schema
  *
@@ -59,7 +96,11 @@ export async function renderAndSanitizeMarkdown(markdown: string): Promise<strin
     .use(remarkGfm)
     .use(remarkRehype, { allowDangerousHtml: false })
     .use(rehypeSlug)
-    .use(rehypeHighlight as any, { ignoreMissing: true })
+    .use(rehypeHighlight as any, {
+      detect: false,
+      languages: allowedHighlightLanguages,
+      ignoreMissing: true,
+    })
     .use(rehypeSanitize as any, sharedSanitizeSchema)
     .use(rehypeStringify)
     .process(markdown);

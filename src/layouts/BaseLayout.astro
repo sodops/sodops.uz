@@ -40,24 +40,8 @@ const canonicalURL = new URL(Astro.url.pathname, Astro.site || 'https://sodops.u
       href="/feed.xml"
     />
 
-    <!-- Anti-FOUC theme initialization script: runs synchronously before body render -->
-    <script is:inline>
-      (function () {
-        function getInitialTheme() {
-          const stored = localStorage.getItem('theme');
-          if (stored === 'dark' || stored === 'light') return stored;
-          return window.matchMedia('(prefers-color-scheme: dark)').matches
-            ? 'dark'
-            : 'light';
-        }
-        const theme = getInitialTheme();
-        if (theme === 'dark') {
-          document.documentElement.classList.add('dark');
-        } else {
-          document.documentElement.classList.remove('dark');
-        }
-      })();
-    </script>
+    <!-- Anti-FOUC theme initialization: runs synchronously before body render -->
+    <script is:inline src="/theme-init.js"></script>
 
     <!-- SEO Meta Tags -->
     <title>
@@ -93,5 +77,6 @@ const canonicalURL = new URL(Astro.url.pathname, Astro.site || 'https://sodops.u
     </main>
 
     <Footer />
+    <script is:inline src="/app.js" defer></script>
   </body>
 </html>

@@ -58,6 +58,17 @@ export const POST: APIRoute = async ({ request }) => {
       );
     }
 
+    const MAX_CONTENT_BYTES = 64 * 1024; // 64 KB limit (~12,000 words)
+    const contentBytes = new TextEncoder().encode(content).length;
+    if (contentBytes > MAX_CONTENT_BYTES) {
+      return new Response(
+        JSON.stringify({
+          error: `Post content exceeds the 64 KB limit (${Math.round(contentBytes / 1024)} KB submitted). Please shorten the content or split into multiple posts.`,
+        }),
+        { status: 413, headers: { 'Content-Type': 'application/json' } }
+      );
+    }
+
     if (!env.DB) {
       return new Response(
         JSON.stringify({ error: 'D1 database binding (DB) is not available' }),

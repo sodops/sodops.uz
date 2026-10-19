@@ -39,21 +39,3 @@ const currentYear = new Date().getFullYear();
     </div>
   </div>
 </footer>
-
-<script>
-  function hydrateEmail() {
-    const link = document.getElementById('contact-email');
-    if (!link) return;
-    const user = link.getAttribute('data-user');
-    const domain = link.getAttribute('data-domain');
-    if (user && domain) {
-      const email = `${user}@${domain}`;
-      link.setAttribute('href', `mailto:${email}`);
-      link.textContent = email;
-    }
-  }
-
-  hydrateEmail();
-  document.addEventListener('astro:after-swap', hydrateEmail);
-  document.addEventListener('astro:page-load', hydrateEmail);
-</script>

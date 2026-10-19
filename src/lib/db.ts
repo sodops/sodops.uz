@@ -1,4 +1,8 @@
-import { renderAndSanitizeMarkdown, calculateReadingTimeMinutes } from './markdown';
+import {
+  renderAndSanitizeMarkdown,
+  sanitizeHtml,
+  calculateReadingTimeMinutes,
+} from './markdown';
 
 type D1Database = import('@cloudflare/workers-types').D1Database;
 
@@ -159,6 +163,7 @@ export async function savePost(
     title: string;
     slug: string;
     content: string;
+    content_html?: string;
     excerpt?: string;
     cover_image?: string;
     published?: boolean | number;
@@ -184,8 +189,10 @@ export async function savePost(
   const publishedAt = data.published_at || (published ? now : '');
   const readingTime = calculateReadingTimeMinutes(content);
 
-  // Pre-render content_html using shared pipeline to save runtime CPU on Workers
-  const contentHtml = await renderAndSanitizeMarkdown(content);
+  // Pre-render content_html: if already pre-rendered (e.g. import), sanitize directly without full re-compilation
+  const contentHtml = data.content_html
+    ? await sanitizeHtml(data.content_html)
+    : await renderAndSanitizeMarkdown(content);
 
   let id = data.id;
   if (!id) {

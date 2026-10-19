@@ -64,23 +64,26 @@ pnpm format          # prettier --write .
    - Truly static shells (`/uses`, `/now`, `/404`) use `export const prerender = true`.
 2. **Session KV Namespace**:
    - The `SESSION` KV namespace in `wrangler.jsonc` is automatically used by `@astrojs/cloudflare` v14 to store Astro sessions. It must be kept configured.
-3. **Cron Triggers (Status Checks)**:
+3. **Cron Triggers (Status Checks) & Limits**:
    - Wired via `wrangler.jsonc` (`triggers.crons: ["*/5 * * * *"]`).
    - Implemented via custom worker entrypoint (`src/worker.ts`) exporting `scheduled()` that calls `src/lib/status.ts` directly.
-   - Note: Cloudflare Workers Free accounts allow 0 crons (Workers Paid allows 1,000).
+   - Cloudflare Workers Free allows 10 ms CPU per request and 5 Cron Triggers per account.
+   - Cloudflare Workers Paid provides default 30 s CPU per request (max 5 minutes) and 250 Cron Triggers per account.
 4. **Admin Security & Authentication**:
-   - `/admin/*` and `/api/admin/*` are protected by Cloudflare Access.
-   - API endpoints verify `Cf-Access-Jwt-Assertion` signature, `aud`, `exp`, and email.
-   - `ADMIN_EMAIL` is loaded from environment variables (never hardcoded).
-   - `DEV_BYPASS_AUTH` is honored **only** when `import.meta.env.DEV === true` AND `host === 'localhost'`. Otherwise, fail closed.
+   - `/admin/*` and `/api/admin/*` are protected by Cloudflare Access under team domain `sodops.cloudflareaccess.com` (team name `sodops`).
+   - Must be accessed via custom domain (`preview.sodops.uz`, later adding apex `sodops.uz`); does not work on ephemeral `*.workers.dev`.
+   - API endpoints verify `Cf-Access-Jwt-Assertion` cryptographic RS256 signature against Access JWKS certs, `aud` claim, `iss` claim (`https://sodops.cloudflareaccess.com`), future `exp`, and email matching.
+   - Allowed emails are loaded from `ADMIN_EMAILS` (comma-separated, allowing primary email + GitHub OAuth).
+   - `DEV_BYPASS_AUTH` is honored **only** when `import.meta.env.DEV === true` AND `host === 'localhost' | '127.0.0.1'`. Otherwise, fail closed.
 5. **R2 Uploads & Images**:
    - Allowed MIME types: `image/png`, `image/jpeg`, `image/webp`, `image/avif`, `image/gif`.
    - **`image/svg+xml` is strictly forbidden** to prevent stored XSS.
    - Max file size: 5MB. Magic bytes validated.
    - Served with correct `Content-Type` and `X-Content-Type-Options: nosniff`.
-6. **Content Security Policy (CSP)**:
-   - `frame-src` must whitelist Sodiq's own project domains for safe iframe previews.
-   - Strict XSS protection via `rehype-sanitize` for rendered Markdown.
+6. **Content Security Policy (CSP) & Defense in Depth**:
+   - Strict XSS protection via `rehype-sanitize` AST schema for rendered Markdown (never regex-based sanitization).
+   - Public pages enforce strict CSP (`script-src 'self'`) with **zero** `unsafe-inline` scripts.
+   - `frame-src` allows `self` and Sodiq's project domains (`https://sodops.uz`, `https://*.sodops.uz`) for safe iframe previews.
 7. **Code Conventions & Placeholders**:
    - Keep all UI strings in `src/lib/strings.ts` for future Uzbek (`uz`) localization.
    - Mark incomplete copy or data with `TODO(sodiq)`.

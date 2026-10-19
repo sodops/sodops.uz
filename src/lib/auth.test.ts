@@ -202,10 +202,14 @@ describe('Authentication: Cryptographic JWT Verification (RSA Key Pair & Multi-E
     signingKey: CryptoKey = privateKey,
     kid: string = 'test-key-id-1'
   ): Promise<string> {
+    const fullPayload = {
+      iss: `https://${teamDomain}`,
+      ...payload,
+    };
     const header = Buffer.from(
       JSON.stringify({ alg: 'RS256', typ: 'JWT', kid })
     ).toString('base64url');
-    const encodedPayload = Buffer.from(JSON.stringify(payload)).toString('base64url');
+    const encodedPayload = Buffer.from(JSON.stringify(fullPayload)).toString('base64url');
     const data = new TextEncoder().encode(`${header}.${encodedPayload}`);
 
     const signature = await crypto.subtle.sign(
@@ -299,6 +303,28 @@ describe('Authentication: Cryptographic JWT Verification (RSA Key Pair & Multi-E
 
     assert.equal(result.authenticated, false);
     assert.match(result.error!, /Audience mismatch/);
+  });
+
+  it('strictly rejects token with wrong iss claim (issuer mismatch)', async () => {
+    const token = await createSignedJwt({
+      email: 'me@sodops.uz',
+      aud: expectedAud,
+      iss: 'https://evil.cloudflareaccess.com',
+      exp: Math.floor(Date.now() / 1000) + 3600,
+    });
+
+    const result = await authenticateAdminRequest({
+      isDev: false,
+      host: 'sodops.uz',
+      jwtAssertion: token,
+      adminEmails,
+      expectedAud,
+      teamDomain,
+      publicKey,
+    });
+
+    assert.equal(result.authenticated, false);
+    assert.match(result.error!, /Issuer mismatch/);
   });
 
   it('strictly rejects expired token', async () => {

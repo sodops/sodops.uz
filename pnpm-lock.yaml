@@ -32,6 +32,9 @@ importers:
       astro:
         specifier: ^7.4.0
         version: 7.4.0(@types/node@22.20.5)(esbuild@0.28.2)(jiti@2.7.0)(yaml@2.9.1)
+      highlight.js:
+        specifier: ^11.12.0
+        version: 11.12.0
       preact:
         specifier: ^11.0.1
         version: 11.0.1(preact-render-to-string@6.8.1)
@@ -1905,6 +1908,10 @@ packages:
 
   highlight.js@11.11.2:
     resolution: {integrity: sha512-oaXMACAU0kzOMXBjWpNcX+vlwSBCIAiZ9BHa7gA15NOTtT2L/l8OSZDuqS2XppOhZBPJ7hm4o8ep2kyuip2uEQ==}
+    engines: {node: '>=12.0.0'}
+
+  highlight.js@11.12.0:
+    resolution: {integrity: sha512-nbfWpyRMcMrPMmDwJB+dhX/eiaPKtc2RB+0QZskqJ3WjRA/FDS0e9hZrx8EC/lbEv8gXy98FcDbNa/dspAaJMg==}
     engines: {node: '>=12.0.0'}
 
   html-escaper@3.0.3:
@@ -5044,6 +5051,8 @@ snapshots:
   he@1.2.0: {}
 
   highlight.js@11.11.2: {}
+
+  highlight.js@11.12.0: {}
 
   html-escaper@3.0.3: {}
 

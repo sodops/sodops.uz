@@ -88,6 +88,17 @@ export const PUT: APIRoute = async ({ params, request }) => {
       );
     }
 
+    const MAX_CONTENT_BYTES = 64 * 1024; // 64 KB limit (~12,000 words)
+    const contentBytes = new TextEncoder().encode(content).length;
+    if (contentBytes > MAX_CONTENT_BYTES) {
+      return new Response(
+        JSON.stringify({
+          error: `Post content exceeds the 64 KB limit (${Math.round(contentBytes / 1024)} KB submitted). Please shorten the content or split into multiple posts.`,
+        }),
+        { status: 413, headers: { 'Content-Type': 'application/json' } }
+      );
+    }
+
     const saved = await savePost(env.DB, {
       id,
       title: body.title,

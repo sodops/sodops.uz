@@ -474,10 +474,22 @@ const initialPosts = isAuthenticated && env.DB ? await getAllPosts(env.DB) : [];
         saveBtn.disabled = true;
         saveBtn.textContent = 'Saving & Purging CDN...';
 
+        const contentStr = inputContent.value;
+        const contentBytes = new TextEncoder().encode(contentStr).length;
+        if (contentBytes > 64 * 1024) {
+          showAlert(
+            `Content exceeds the 64 KB limit (${Math.round(contentBytes / 1024)} KB submitted). Please shorten the post to prevent edge execution timeouts.`,
+            true
+          );
+          saveBtn.disabled = false;
+          saveBtn.textContent = 'Save Post';
+          return;
+        }
+
         const payload = {
           title: inputTitle.value,
           slug: inputSlug.value,
-          content: inputContent.value,
+          content: contentStr,
           excerpt: inputExcerpt.value,
           tags: inputTags.value
             .split(',')
@@ -498,8 +510,20 @@ const initialPosts = isAuthenticated && env.DB ? await getAllPosts(env.DB) : [];
           });
 
           if (!res.ok) {
-            const errData = await res.json();
-            throw new Error(errData.error || 'Failed to save post');
+            let errMsg = 'Failed to save post';
+            try {
+              const errData = await res.json();
+              errMsg = errData.error || errMsg;
+            } catch {
+              if (res.status === 413) {
+                errMsg = 'Post content exceeds the 64 KB limit. Please shorten your post.';
+              } else if (res.status === 524 || res.status === 504) {
+                errMsg = 'Server timeout while saving post (Cloudflare CPU limit exceeded).';
+              } else {
+                errMsg = `Server error (HTTP ${res.status})`;
+              }
+            }
+            throw new Error(errMsg);
           }
 
           showAlert('Post saved successfully! Edge cache purged.');
