@@ -18,7 +18,7 @@ Astro.cache.set({ maxAge: 60, swr: 300, tags: ['home', 'blog'] });
 // Remove this header once caching is confirmed working.
 Astro.response.headers.set('X-Rendered-At', new Date().toISOString());
 
-import { getPublishedPosts } from '../lib/db';
+import { getPublishedPosts, getFeaturedProjects } from '../lib/db';
 
 import { env } from 'cloudflare:workers';
 
@@ -59,26 +59,29 @@ function formatDate(date: Date): string {
   return date.toISOString().split('T')[0];
 }
 
-// Placeholder featured projects (will read from D1 in Phase 4)
-// TODO(sodiq): Replace with real D1 query once D1 is wired in Phase 4
-const featuredProjects = [
-  {
-    name: 'sodops.uz',
-    description:
-      'Personal publishing platform and status monitor built on Astro & Cloudflare Workers.',
-    url: 'https://sodops.uz',
-    tags: ['Astro', 'Cloudflare D1', 'Tailwind CSS'],
-    status: 'operational',
-  },
-  {
-    name: 'Homelab k3s Cluster',
-    description:
-      'Lightweight multi-node Kubernetes cluster running monitoring, DNS, and containerized services.',
-    url: 'https://github.com', // TODO(sodiq): add repo url
-    tags: ['k3s', 'Docker', 'Prometheus', 'Grafana'],
-    status: 'operational',
-  },
-];
+// Load featured projects and live status from D1 (with resilient fallback)
+const dbFeatured = env?.DB ? await getFeaturedProjects(env.DB) : [];
+const featuredProjects =
+  dbFeatured.length > 0
+    ? dbFeatured
+    : [
+        {
+          name: 'sodops.uz',
+          description:
+            'Personal publishing platform and status monitor built on Astro & Cloudflare Workers.',
+          url: 'https://sodops.uz',
+          tech_tags: ['Astro', 'Cloudflare D1', 'Tailwind CSS'],
+          current_status: 'up' as const,
+        },
+        {
+          name: 'Homelab k3s Cluster',
+          description:
+            'Lightweight multi-node Kubernetes cluster running monitoring, DNS, and containerized services.',
+          url: 'https://github.com/skarimjonoff',
+          tech_tags: ['k3s', 'Docker', 'Prometheus', 'Grafana'],
+          current_status: 'up' as const,
+        },
+      ];
 ---
 
 <BaseLayout title={strings.site.title}>
@@ -246,16 +249,38 @@ const featuredProjects = [
               <span class="font-medium text-sm text-neutral-900 dark:text-neutral-100 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors">
                 {project.name}
               </span>
-              <span class="inline-flex items-center gap-1 text-[11px] font-mono text-emerald-600 dark:text-emerald-400">
-                <span class="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-                <span>up</span>
+              <span
+                class:list={[
+                  'inline-flex items-center gap-1 text-[11px] font-mono',
+                  project.current_status === 'up'
+                    ? 'text-emerald-600 dark:text-emerald-400'
+                    : project.current_status === 'degraded'
+                      ? 'text-amber-600 dark:text-amber-400'
+                      : project.current_status === 'down'
+                        ? 'text-red-600 dark:text-red-400'
+                        : 'text-neutral-500',
+                ]}
+              >
+                <span
+                  class:list={[
+                    'w-1.5 h-1.5 rounded-full',
+                    project.current_status === 'up'
+                      ? 'bg-emerald-500'
+                      : project.current_status === 'degraded'
+                        ? 'bg-amber-500'
+                        : project.current_status === 'down'
+                          ? 'bg-red-500'
+                          : 'bg-neutral-400',
+                  ]}
+                />
+                <span>{project.current_status}</span>
               </span>
             </div>
             <p class="text-xs text-neutral-600 dark:text-neutral-400 line-clamp-2 mb-3">
               {project.description}
             </p>
             <div class="flex flex-wrap gap-1.5">
-              {project.tags.map((tag) => (
+              {(project.tech_tags || []).map((tag) => (
                 <span class="text-[10px] font-mono px-1.5 py-0.5 rounded bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-400">
                   {tag}
                 </span>

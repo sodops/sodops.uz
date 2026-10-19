@@ -268,3 +268,235 @@ export async function deletePost(db: D1Database, id: string): Promise<boolean> {
   const res = await db.prepare('DELETE FROM posts WHERE id = ?').bind(id).run();
   return (res.meta.changes || 0) > 0;
 }
+
+// ---------------------------------------------------------------------------
+// Phase 4: Projects & Live Uptime Status Functions
+// ---------------------------------------------------------------------------
+
+export interface Project {
+  id: string;
+  name: string;
+  description: string;
+  url: string;
+  repo_url: string | null;
+  status_url: string | null;
+  tech_tags: string[];
+  featured: number;
+  sort_order: number;
+  allow_iframe: number;
+  screenshot_url: string | null;
+}
+
+export interface UptimeCheck {
+  id: number;
+  project_id: string;
+  timestamp: string;
+  status: 'up' | 'down' | 'degraded';
+  status_code: number;
+  latency_ms: number;
+}
+
+export interface DayStatus {
+  date: string;
+  status: 'up' | 'down' | 'degraded' | 'none';
+  percent: number;
+}
+
+export interface ProjectWithStatus extends Project {
+  current_status: 'up' | 'down' | 'degraded' | 'unknown';
+  latest_latency_ms: number | null;
+  latest_check_at: string | null;
+  uptime_percentage_30d: number;
+  uptime_history_30d: DayStatus[];
+}
+
+/**
+ * Parses tech_tags safely from string or JSON array.
+ */
+function parseTechTags(raw: any): string[] {
+  if (!raw) return [];
+  if (Array.isArray(raw)) return raw;
+  try {
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return String(raw)
+      .split(',')
+      .map((s) => s.trim())
+      .filter(Boolean);
+  }
+}
+
+/**
+ * Retrieves all projects from D1 ordered by sort_order ASC, name ASC.
+ */
+export async function getAllProjects(db?: D1Database): Promise<Project[]> {
+  if (!db) return [];
+  const { results } = await db
+    .prepare('SELECT * FROM projects ORDER BY sort_order ASC, name ASC')
+    .all();
+
+  return (results || []).map((row: any) => ({
+    ...row,
+    tech_tags: parseTechTags(row.tech_tags),
+  }));
+}
+
+/**
+ * Retrieves projects with live uptime status, recent latency, and 30-day history bars.
+ */
+export async function getProjectsWithStatus(
+  db?: D1Database
+): Promise<ProjectWithStatus[]> {
+  if (!db) return [];
+
+  const projects = await getAllProjects(db);
+  if (projects.length === 0) return [];
+
+  // 1. Fetch latest check per project
+  const latestQuery = `
+    SELECT u.project_id, u.status, u.status_code, u.latency_ms, u.timestamp
+    FROM uptime_checks u
+    INNER JOIN (
+      SELECT project_id, MAX(id) as max_id
+      FROM uptime_checks
+      GROUP BY project_id
+    ) latest ON u.id = latest.max_id;
+  `;
+  const { results: latestResults } = await db.prepare(latestQuery).all();
+  const latestMap = new Map<string, any>();
+  for (const row of latestResults || []) {
+    latestMap.set(row.project_id as string, row);
+  }
+
+  // 2. Fetch daily aggregates for past 30 days
+  const dailyQuery = `
+    SELECT 
+      project_id,
+      DATE(timestamp) as check_date,
+      status,
+      COUNT(*) as count
+    FROM uptime_checks
+    WHERE timestamp >= datetime('now', '-30 days')
+    GROUP BY project_id, check_date, status
+    ORDER BY check_date ASC;
+  `;
+  const { results: dailyResults } = await db.prepare(dailyQuery).all();
+
+  // Group daily results by project_id -> date -> status counts
+  const projectDailyMap = new Map<string, Map<string, { up: number; down: number; degraded: number }>>();
+  for (const row of dailyResults || []) {
+    const pid = row.project_id as string;
+    const date = row.check_date as string;
+    const status = row.status as 'up' | 'down' | 'degraded';
+    const count = Number(row.count) || 0;
+
+    if (!projectDailyMap.has(pid)) {
+      projectDailyMap.set(pid, new Map());
+    }
+    const dateMap = projectDailyMap.get(pid)!;
+    if (!dateMap.has(date)) {
+      dateMap.set(date, { up: 0, down: 0, degraded: 0 });
+    }
+    const current = dateMap.get(date)!;
+    if (status in current) {
+      current[status] += count;
+    }
+  }
+
+  // Generate 30-day date series ending today (UTC)
+  const dateSeries: string[] = [];
+  const today = new Date();
+  for (let i = 29; i >= 0; i--) {
+    const d = new Date(today);
+    d.setUTCDate(today.getUTCDate() - i);
+    dateSeries.push(d.toISOString().split('T')[0]);
+  }
+
+  return projects.map((p) => {
+    const latest = latestMap.get(p.id);
+    const dateMap = projectDailyMap.get(p.id);
+
+    let totalChecks = 0;
+    let upChecks = 0;
+
+    const uptime_history_30d: DayStatus[] = dateSeries.map((date) => {
+      const counts = dateMap?.get(date);
+      if (!counts) {
+        return { date, status: 'none', percent: 100 };
+      }
+
+      const dayTotal = counts.up + counts.degraded + counts.down;
+      totalChecks += dayTotal;
+      upChecks += counts.up + counts.degraded; // degraded counts towards availability
+
+      let status: 'up' | 'down' | 'degraded' = 'up';
+      if (counts.down > 0) {
+        status = 'down';
+      } else if (counts.degraded > 0) {
+        status = 'degraded';
+      }
+
+      const percent = dayTotal > 0 ? Math.round(((counts.up + counts.degraded) / dayTotal) * 100) : 100;
+      return { date, status, percent };
+    });
+
+    const uptime_percentage_30d =
+      totalChecks > 0 ? Number(((upChecks / totalChecks) * 100).toFixed(2)) : 100;
+
+    return {
+      ...p,
+      current_status: (latest?.status as any) || 'unknown',
+      latest_latency_ms: latest ? Number(latest.latency_ms) : null,
+      latest_check_at: (latest?.timestamp as string) || null,
+      uptime_percentage_30d,
+      uptime_history_30d,
+    };
+  });
+}
+
+/**
+ * Retrieves featured projects with their current status for the homepage.
+ */
+export async function getFeaturedProjects(
+  db?: D1Database
+): Promise<ProjectWithStatus[]> {
+  const all = await getProjectsWithStatus(db);
+  return all.filter((p) => p.featured === 1);
+}
+
+/**
+ * Records an uptime check for a project in D1.
+ */
+export async function recordUptimeCheck(
+  db: D1Database,
+  check: {
+    projectId: string;
+    status: 'up' | 'down' | 'degraded';
+    statusCode: number;
+    latencyMs: number;
+    timestamp?: string;
+  }
+): Promise<void> {
+  const now = check.timestamp || new Date().toISOString();
+  await db
+    .prepare(
+      'INSERT INTO uptime_checks (project_id, timestamp, status, status_code, latency_ms) VALUES (?, ?, ?, ?, ?)'
+    )
+    .bind(check.projectId, now, check.status, check.statusCode, check.latencyMs)
+    .run();
+}
+
+/**
+ * Purges uptime checks older than N days to keep D1 storage lean.
+ */
+export async function cleanupOldUptimeChecks(
+  db: D1Database,
+  days = 30
+): Promise<number> {
+  const res = await db
+    .prepare("DELETE FROM uptime_checks WHERE timestamp < datetime('now', '-' || ? || ' days')")
+    .bind(days)
+    .run();
+  return res.meta.changes || 0;
+}

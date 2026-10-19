@@ -35,11 +35,13 @@ export default defineConfig({
   // Astro.cache.set() inside pages can override or extend these.
   routeRules: {
     // Home page: edge-cached 60s, stale-while-revalidate 5 min
-    '/': { maxAge: 60, swr: 300, tags: ['home', 'blog'] },
+    '/': { maxAge: 60, swr: 300, tags: ['home', 'blog', 'projects'] },
     // Blog list: same policy, tagged for group invalidation
     '/blog': { maxAge: 60, swr: 300, tags: ['blog'] },
     // Individual blog posts: cache longer, post-specific tag + group tag
     '/blog/[slug]': { maxAge: 300, swr: 600, tags: ['blog'] },
+    // Projects & Status: edge-cached 60s, tagged for cron invalidation
+    '/projects': { maxAge: 60, swr: 300, tags: ['projects'] },
     // RSS feed: cache 5 min, tagged with blog
     '/feed.xml': { maxAge: 300, swr: 600, tags: ['blog'] },
     // Dynamic sitemap: cache 1 hour, tagged with blog

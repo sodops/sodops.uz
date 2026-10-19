@@ -1,0 +1,261 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import { getProjectsWithStatus } from '../lib/db';
+import { strings } from '../lib/strings';
+import { env } from 'cloudflare:workers';
+
+export const prerender = false;
+
+// Edge cache tags: 60s TTL, 5m stale-while-revalidate, tagged with 'projects'
+Astro.cache.set({
+  maxAge: 60,
+  swr: 300,
+  tags: ['projects'],
+});
+
+const projects = env?.DB ? await getProjectsWithStatus(env.DB) : [];
+
+// Compute platform-wide status metrics
+const totalServices = projects.length;
+const downServices = projects.filter((p) => p.current_status === 'down').length;
+const degradedServices = projects.filter((p) => p.current_status === 'degraded').length;
+
+const overallStatus =
+  downServices > 0 ? 'down' : degradedServices > 0 ? 'degraded' : 'up';
+
+const avgUptime =
+  totalServices > 0
+    ? (
+        projects.reduce((acc, p) => acc + p.uptime_percentage_30d, 0) /
+        totalServices
+      ).toFixed(2)
+    : '100.00';
+---
+
+<BaseLayout
+  title={strings.projects.title}
+  description={strings.projects.description}
+>
+  <div class="space-y-8">
+    <!-- Header -->
+    <header class="space-y-2 pb-6 border-b border-neutral-200/60 dark:border-neutral-800/60">
+      <h1
+        class="text-2xl sm:text-3xl font-semibold tracking-tight text-neutral-900 dark:text-neutral-100 font-sans"
+      >
+        {strings.projects.title}
+      </h1>
+      <p class="text-sm text-neutral-600 dark:text-neutral-400 max-w-xl">
+        {strings.projects.description} Infrastructure services, tools, and live availability monitors.
+      </p>
+    </header>
+
+    <!-- Global Platform Status Summary Banner -->
+    <section
+      class="p-4 sm:p-5 rounded-lg border border-neutral-200/80 dark:border-neutral-800/80 bg-white/50 dark:bg-neutral-900/40 space-y-4"
+    >
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div class="flex items-center gap-2.5">
+          <span class="relative flex h-3 w-3">
+            {
+              overallStatus === 'up' && (
+                <>
+                  <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+                  <span class="relative inline-flex rounded-full h-3 w-3 bg-emerald-500" />
+                </>
+              )
+            }
+            {
+              overallStatus === 'degraded' && (
+                <>
+                  <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75" />
+                  <span class="relative inline-flex rounded-full h-3 w-3 bg-amber-500" />
+                </>
+              )
+            }
+            {
+              overallStatus === 'down' && (
+                <>
+                  <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75" />
+                  <span class="relative inline-flex rounded-full h-3 w-3 bg-red-500" />
+                </>
+              )
+            }
+          </span>
+          <span class="text-sm font-semibold tracking-tight text-neutral-900 dark:text-neutral-100 font-sans">
+            {overallStatus === 'up' && 'All Systems Operational'}
+            {overallStatus === 'degraded' && 'Partial System Degradation'}
+            {overallStatus === 'down' && 'Service Outage Detected'}
+          </span>
+        </div>
+
+        <div class="flex items-center gap-4 text-xs font-mono text-neutral-500 dark:text-neutral-400">
+          <span>{totalServices} Monitored Endpoints</span>
+          <span>&middot;</span>
+          <span>{avgUptime}% Avg 30-Day Uptime</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- Projects List -->
+    <section class="space-y-6">
+      {
+        projects.length === 0 ? (
+          <p class="py-12 text-center text-xs font-mono text-neutral-500 dark:text-neutral-400">
+            No projects registered in database yet.
+          </p>
+        ) : (
+          projects.map((project) => (
+            <article class="p-5 rounded-lg border border-neutral-200/70 dark:border-neutral-800/70 bg-white/40 dark:bg-neutral-900/30 hover:border-emerald-500/40 transition-colors space-y-4">
+              {/* Project Header Row */}
+              <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                <div class="flex items-center gap-2.5">
+                  <span
+                    class:list={[
+                      'inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[11px] font-mono uppercase tracking-wider',
+                      project.current_status === 'up'
+                        ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/80 dark:text-emerald-300'
+                        : project.current_status === 'degraded'
+                          ? 'bg-amber-100 text-amber-800 dark:bg-amber-950/80 dark:text-amber-300'
+                          : project.current_status === 'down'
+                            ? 'bg-red-100 text-red-800 dark:bg-red-950/80 dark:text-red-300'
+                            : 'bg-neutral-200 text-neutral-700 dark:bg-neutral-800 dark:text-neutral-400',
+                    ]}
+                  >
+                    <span
+                      class:list={[
+                        'w-1.5 h-1.5 rounded-full',
+                        project.current_status === 'up'
+                          ? 'bg-emerald-500'
+                          : project.current_status === 'degraded'
+                            ? 'bg-amber-500'
+                            : project.current_status === 'down'
+                              ? 'bg-red-500'
+                              : 'bg-neutral-400',
+                      ]}
+                    />
+                    {project.current_status === 'up'
+                      ? strings.projects.statusUp
+                      : project.current_status === 'degraded'
+                        ? strings.projects.statusDegraded
+                        : project.current_status === 'down'
+                          ? strings.projects.statusDown
+                          : 'Unknown'}
+                  </span>
+
+                  <h2 class="text-base font-semibold text-neutral-900 dark:text-neutral-100 font-sans">
+                    <a
+                      href={project.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      class="hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors inline-flex items-center gap-1"
+                    >
+                      {project.name}
+                      <svg
+                        class="w-3.5 h-3.5 text-neutral-400 dark:text-neutral-500 inline"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                        stroke-width="2"
+                      >
+                        <path
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                          d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
+                        />
+                      </svg>
+                    </a>
+                  </h2>
+                </div>
+
+                <div class="flex items-center gap-3 text-xs font-mono text-neutral-500 dark:text-neutral-400">
+                  {project.latest_latency_ms !== null && (
+                    <span>
+                      {strings.projects.latency}:{' '}
+                      <span class="text-neutral-800 dark:text-neutral-200 font-medium">
+                        {project.latest_latency_ms}ms
+                      </span>
+                    </span>
+                  )}
+                  <span>&middot;</span>
+                  <span>
+                    {strings.projects.uptime30d}:{' '}
+                    <span class="text-emerald-600 dark:text-emerald-400 font-medium">
+                      {project.uptime_percentage_30d}%
+                    </span>
+                  </span>
+                  {project.repo_url && (
+                    <>
+                      <span>&middot;</span>
+                      <a
+                        href={project.repo_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        class="hover:text-neutral-800 dark:hover:text-neutral-200 transition-colors"
+                        title={strings.projects.viewSource}
+                      >
+                        Source &rarr;
+                      </a>
+                    </>
+                  )}
+                </div>
+              </div>
+
+              {/* Description */}
+              <p class="text-xs sm:text-sm text-neutral-600 dark:text-neutral-400 leading-relaxed">
+                {project.description}
+              </p>
+
+              {/* Tech Tags */}
+              <div class="flex flex-wrap gap-1.5 pt-1">
+                {project.tech_tags.map((tag) => (
+                  <span class="text-[11px] font-mono px-2 py-0.5 rounded bg-neutral-100 dark:bg-neutral-800/80 text-neutral-600 dark:text-neutral-400 border border-neutral-200/60 dark:border-neutral-700/60">
+                    {tag}
+                  </span>
+                ))}
+              </div>
+
+              {/* 30-Day Uptime Bar Graph */}
+              <div class="pt-3 border-t border-neutral-200/60 dark:border-neutral-800/60 space-y-1.5">
+                <div class="flex items-center gap-[3px] h-6 w-full" aria-label="30-day uptime bars">
+                  {project.uptime_history_30d.map((day) => (
+                    <div
+                      class:list={[
+                        'flex-1 h-full rounded-[2px] transition-transform hover:scale-y-125 cursor-pointer',
+                        day.status === 'up'
+                          ? 'bg-emerald-500/80 hover:bg-emerald-400'
+                          : day.status === 'degraded'
+                            ? 'bg-amber-500/80 hover:bg-amber-400'
+                            : day.status === 'down'
+                              ? 'bg-red-500/80 hover:bg-red-400'
+                              : 'bg-neutral-200/70 dark:bg-neutral-800/70 hover:bg-neutral-400',
+                      ]}
+                      title={`${day.date}: ${day.status.toUpperCase()} (${day.percent}% available)`}
+                    />
+                  ))}
+                </div>
+
+                <div class="flex items-center justify-between text-[10px] font-mono text-neutral-400 dark:text-neutral-500">
+                  <span>30 days ago</span>
+                  <span>Checked every 5m via Cloudflare Cron</span>
+                  <span>Today</span>
+                </div>
+              </div>
+            </article>
+          ))
+        )
+      }
+    </section>
+
+    <!-- Architecture Explanation Callout -->
+    <footer class="pt-6 border-t border-neutral-200/60 dark:border-neutral-800/60">
+      <div class="p-4 rounded border border-neutral-200/60 dark:border-neutral-800/60 bg-neutral-100/40 dark:bg-neutral-900/20 text-xs text-neutral-500 dark:text-neutral-400 leading-relaxed space-y-1 font-mono">
+        <div class="font-semibold text-neutral-700 dark:text-neutral-300">
+          How this monitoring works:
+        </div>
+        <p>
+          Status checks run automatically every 5 minutes in a Cloudflare Worker via Cron Triggers (<code class="text-[11px]">*/5 * * * *</code>). Pings are dispatched concurrently to project health targets, and round-trip latencies are stored in Cloudflare D1. Public pages serve edge-cached aggregated metrics with zero runtime overhead.
+        </p>
+      </div>
+    </footer>
+  </div>
+</BaseLayout>
