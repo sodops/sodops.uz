@@ -1,0 +1,59 @@
+---
+import { strings } from '../lib/strings';
+
+const currentYear = new Date().getFullYear();
+---
+
+<footer
+  class="w-full mt-auto py-10 border-t border-neutral-200/60 dark:border-neutral-800/60"
+>
+  <div
+    class="max-w-[720px] mx-auto px-4 sm:px-6 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-neutral-500 dark:text-neutral-500"
+  >
+    <div class="flex items-center gap-3">
+      <span>{strings.site.author} &copy; {currentYear}</span>
+      <span aria-hidden="true">&middot;</span>
+      <span>{strings.footer.license}</span>
+    </div>
+
+    <div class="flex items-center gap-4">
+      <!-- Obfuscated email against scrapers: rendered dynamically or using html entities -->
+      <a
+        id="contact-email"
+        href="#"
+        data-user="me"
+        data-domain="sodops.uz"
+        class="hover:text-neutral-800 dark:hover:text-neutral-300 transition-colors"
+      >
+        <span class="email-placeholder">me [at] sodops.uz</span>
+      </a>
+
+      <span aria-hidden="true">&middot;</span>
+
+      <a
+        href="/feed.xml"
+        class="hover:text-neutral-800 dark:hover:text-neutral-300 transition-colors"
+      >
+        {strings.nav.rss}
+      </a>
+    </div>
+  </div>
+</footer>
+
+<script>
+  function hydrateEmail() {
+    const link = document.getElementById('contact-email');
+    if (!link) return;
+    const user = link.getAttribute('data-user');
+    const domain = link.getAttribute('data-domain');
+    if (user && domain) {
+      const email = `${user}@${domain}`;
+      link.setAttribute('href', `mailto:${email}`);
+      link.textContent = email;
+    }
+  }
+
+  hydrateEmail();
+  document.addEventListener('astro:after-swap', hydrateEmail);
+  document.addEventListener('astro:page-load', hydrateEmail);
+</script>

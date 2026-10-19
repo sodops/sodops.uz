@@ -1,0 +1,106 @@
+---
+import ThemeToggle from './ThemeToggle.astro';
+import { strings } from '../lib/strings';
+
+const navItems = [
+  { href: '/blog', label: strings.nav.blog },
+  { href: '/projects', label: strings.nav.projects },
+  { href: '/uses', label: strings.nav.uses },
+  { href: '/now', label: strings.nav.now },
+];
+
+const currentPath = Astro.url.pathname;
+---
+
+<header class="w-full py-6 sm:py-8">
+  <div class="max-w-[720px] mx-auto px-4 sm:px-6 flex items-center justify-between">
+    <!-- Brand / Home Link -->
+    <a
+      href="/"
+      class="text-sm font-semibold tracking-tight text-neutral-900 dark:text-neutral-100 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors"
+      aria-label="sodops.uz homepage"
+    >
+      <span class="text-emerald-600 dark:text-emerald-400 font-mono mr-1">~</span
+      >sodops.uz
+    </a>
+
+    <!-- Navigation & Icons -->
+    <nav class="flex items-center gap-4 sm:gap-6 text-sm" aria-label="Main navigation">
+      <ul class="flex items-center gap-3 sm:gap-5 text-neutral-600 dark:text-neutral-400">
+        {
+          navItems.map((item) => {
+            const isActive =
+              currentPath === item.href ||
+              (item.href !== '/' && currentPath.startsWith(item.href));
+            return (
+              <li>
+                <a
+                  href={item.href}
+                  class:list={[
+                    'transition-colors hover:text-neutral-900 dark:hover:text-neutral-100',
+                    isActive
+                      ? 'text-neutral-900 dark:text-neutral-100 font-medium underline underline-offset-4 decoration-emerald-500/60'
+                      : '',
+                  ]}
+                >
+                  {item.label}
+                </a>
+              </li>
+            );
+          })
+        }
+      </ul>
+
+      <!-- Action Icons Divider -->
+      <div class="h-3.5 w-px bg-neutral-200 dark:bg-neutral-800" aria-hidden="true"></div>
+
+      <!-- Action Icons -->
+      <div class="flex items-center gap-1 text-neutral-600 dark:text-neutral-400">
+        <!-- RSS Link -->
+        <a
+          href="/feed.xml"
+          title={strings.nav.rss}
+          aria-label={strings.nav.rss}
+          class="inline-flex items-center justify-center w-8 h-8 rounded hover:text-neutral-900 dark:hover:text-neutral-100 transition-colors focus-visible:ring-1 focus-visible:ring-emerald-500"
+        >
+          <svg
+            class="w-4 h-4"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+            stroke-width="2"
+          >
+            <path stroke-linecap="round" stroke-linejoin="round" d="M4 11a9 9 0 0 1 9 9"
+            ></path>
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              d="M4 4a16 16 0 0 1 16 16"></path>
+            <circle cx="5" cy="19" r="1" fill="currentColor"></circle>
+          </svg>
+        </a>
+
+        <!-- GitHub Link -->
+        <a
+          href={strings.site.github}
+          target="_blank"
+          rel="noopener noreferrer"
+          title="GitHub"
+          aria-label="GitHub"
+          class="inline-flex items-center justify-center w-8 h-8 rounded hover:text-neutral-900 dark:hover:text-neutral-100 transition-colors focus-visible:ring-1 focus-visible:ring-emerald-500"
+        >
+          <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+            <path
+              fill-rule="evenodd"
+              clip-rule="evenodd"
+              d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.53 1.032 1.53 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z"
+            ></path>
+          </svg>
+        </a>
+
+        <!-- Dark/Light Theme Toggle -->
+        <ThemeToggle />
+      </div>
+    </nav>
+  </div>
+</header>

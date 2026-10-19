@@ -1,0 +1,97 @@
+---
+import { ClientRouter } from 'astro:transitions';
+import Header from '../components/Header.astro';
+import Footer from '../components/Footer.astro';
+import { strings } from '../lib/strings';
+import '../styles/global.css';
+
+interface Props {
+  title?: string;
+  description?: string;
+  ogImage?: string;
+  article?: {
+    publishedTime?: string;
+    modifiedTime?: string;
+    tags?: string[];
+  };
+}
+
+const {
+  title = strings.site.title,
+  description = strings.site.description,
+  ogImage = '/og.png',
+  article,
+} = Astro.props;
+
+const canonicalURL = new URL(Astro.url.pathname, Astro.site || 'https://sodops.uz');
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="canonical" href={canonicalURL} />
+    <link
+      rel="alternate"
+      type="application/rss+xml"
+      title={strings.site.title}
+      href="/feed.xml"
+    />
+
+    <!-- Anti-FOUC theme initialization script: runs synchronously before body render -->
+    <script is:inline>
+      (function () {
+        function getInitialTheme() {
+          const stored = localStorage.getItem('theme');
+          if (stored === 'dark' || stored === 'light') return stored;
+          return window.matchMedia('(prefers-color-scheme: dark)').matches
+            ? 'dark'
+            : 'light';
+        }
+        const theme = getInitialTheme();
+        if (theme === 'dark') {
+          document.documentElement.classList.add('dark');
+        } else {
+          document.documentElement.classList.remove('dark');
+        }
+      })();
+    </script>
+
+    <!-- SEO Meta Tags -->
+    <title>
+      {title === strings.site.title ? title : `${title} - ${strings.site.name}`}
+    </title>
+    <meta name="description" content={description} />
+    <meta name="author" content={strings.site.author} />
+
+    <!-- Open Graph -->
+    <meta property="og:type" content={article ? 'article' : 'website'} />
+    <meta property="og:url" content={canonicalURL} />
+    <meta property="og:title" content={title} />
+    <meta property="og:description" content={description} />
+    <meta property="og:image" content={new URL(ogImage, canonicalURL)} />
+    <meta property="og:site_name" content={strings.site.name} />
+
+    <!-- Twitter Card -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content={title} />
+    <meta name="twitter:description" content={description} />
+    <meta name="twitter:image" content={new URL(ogImage, canonicalURL)} />
+
+    <!-- Astro View Transitions -->
+    <ClientRouter />
+  </head>
+  <body
+    class="bg-neutral-50 dark:bg-neutral-950 text-neutral-900 dark:text-neutral-100 min-h-screen flex flex-col transition-colors duration-150"
+  >
+    <Header />
+
+    <main class="w-full max-w-[720px] mx-auto px-4 sm:px-6 flex-1 py-8 sm:py-12">
+      <slot />
+    </main>
+
+    <Footer />
+  </body>
+</html>

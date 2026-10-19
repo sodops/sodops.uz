@@ -1,0 +1,250 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import { strings } from '../lib/strings';
+
+// Required: On-demand rendering with Cloudflare edge caching
+export const prerender = false;
+
+// Set edge cache header: public, max-age=0, s-maxage=60, stale-while-revalidate=300
+Astro.response.headers.set(
+  'Cache-Control',
+  'public, max-age=0, s-maxage=60, stale-while-revalidate=300'
+);
+
+// Placeholder recent posts (will read from D1 in Phase 3)
+// TODO(sodiq): Replace with real D1 query once D1 is wired in Phase 3
+const recentPosts = [
+  {
+    title: 'Minimal observability: Monitoring k3s with Prometheus & Grafana',
+    slug: 'minimal-observability-k3s',
+    date: '2026-10-15',
+    readingTime: '4 min read',
+    excerpt:
+      'Setting up lightweight metrics and logging on edge Kubernetes clusters without eating all your RAM.',
+  },
+  {
+    title: 'Deploying Astro on Cloudflare Workers with D1 and R2',
+    slug: 'astro-cloudflare-d1-r2',
+    date: '2026-10-02',
+    readingTime: '6 min read',
+    excerpt:
+      'Building zero-rebuild publishing platforms with Cloudflare edge caching and SQLite at the edge.',
+  },
+  {
+    title: 'Why I prefer text-first personal websites',
+    slug: 'why-text-first-websites',
+    date: '2026-09-20',
+    readingTime: '3 min read',
+    excerpt:
+      'Ditching heavy hero banners and complex design patterns for clean typography and high-density information.',
+  },
+];
+
+// Placeholder featured projects (will read from D1 in Phase 4)
+// TODO(sodiq): Replace with real D1 query once D1 is wired in Phase 4
+const featuredProjects = [
+  {
+    name: 'sodops.uz',
+    description:
+      'Personal publishing platform and status monitor built on Astro & Cloudflare Workers.',
+    url: 'https://sodops.uz',
+    tags: ['Astro', 'Cloudflare D1', 'Tailwind CSS'],
+    status: 'operational',
+  },
+  {
+    name: 'Homelab k3s Cluster',
+    description:
+      'Lightweight multi-node Kubernetes cluster running monitoring, DNS, and containerized services.',
+    url: 'https://github.com', // TODO(sodiq): add repo url
+    tags: ['k3s', 'Docker', 'Prometheus', 'Grafana'],
+    status: 'operational',
+  },
+];
+---
+
+<BaseLayout title={strings.site.title}>
+  <!-- Intro Prose Section -->
+  <section
+    class="space-y-5 text-neutral-800 dark:text-neutral-200 leading-relaxed text-[15px] sm:text-base"
+  >
+    <h1
+      class="text-2xl sm:text-3xl font-semibold tracking-tight text-neutral-900 dark:text-neutral-100 font-sans"
+    >
+      {strings.home.greeting}
+    </h1>
+
+    <p>
+      I'm a DevOps-oriented developer and AI student based in
+      <span class="text-neutral-900 dark:text-neutral-100 font-medium"
+        >{strings.site.location}</span
+      >. I build and maintain infrastructure using
+      <a
+        href="https://www.docker.com"
+        target="_blank"
+        rel="noopener noreferrer"
+        class="font-medium text-emerald-600 dark:text-emerald-400 underline underline-offset-2 decoration-emerald-500/40 hover:decoration-emerald-500"
+        >Docker</a
+      >,
+      <a
+        href="https://k3s.io"
+        target="_blank"
+        rel="noopener noreferrer"
+        class="font-medium text-emerald-600 dark:text-emerald-400 underline underline-offset-2 decoration-emerald-500/40 hover:decoration-emerald-500"
+        >Kubernetes (k3s)</a
+      >,
+      <a
+        href="https://prometheus.io"
+        target="_blank"
+        rel="noopener noreferrer"
+        class="font-medium text-emerald-600 dark:text-emerald-400 underline underline-offset-2 decoration-emerald-500/40 hover:decoration-emerald-500"
+        >Prometheus</a
+      >,
+      <a
+        href="https://grafana.com"
+        target="_blank"
+        rel="noopener noreferrer"
+        class="font-medium text-emerald-600 dark:text-emerald-400 underline underline-offset-2 decoration-emerald-500/40 hover:decoration-emerald-500"
+        >Grafana</a
+      >, and
+      <a
+        href="https://grafana.com/oss/loki/"
+        target="_blank"
+        rel="noopener noreferrer"
+        class="font-medium text-emerald-600 dark:text-emerald-400 underline underline-offset-2 decoration-emerald-500/40 hover:decoration-emerald-500"
+        >Loki</a
+      >.
+    </p>
+
+    <p>
+      My work focuses on cloud & edge deployments across
+      <a
+        href="https://cloudflare.com"
+        target="_blank"
+        rel="noopener noreferrer"
+        class="font-medium text-emerald-600 dark:text-emerald-400 underline underline-offset-2 decoration-emerald-500/40 hover:decoration-emerald-500"
+        >Cloudflare</a
+      > and
+      <a
+        href="https://digitalocean.com"
+        target="_blank"
+        rel="noopener noreferrer"
+        class="font-medium text-emerald-600 dark:text-emerald-400 underline underline-offset-2 decoration-emerald-500/40 hover:decoration-emerald-500"
+        >DigitalOcean</a
+      >, pairing resilient distributed architectures with minimal, fast frontend delivery.
+    </p>
+
+    <!-- "What I'm Doing Now" Callout -->
+    <div
+      class="pt-2 text-sm text-neutral-600 dark:text-neutral-400 flex items-center gap-2"
+    >
+      <span
+        class="inline-block w-2 h-2 rounded-full bg-emerald-500 animate-pulse"
+        aria-hidden="true"></span>
+      <span>
+        {strings.home.nowTeaser}
+        <a
+          href="/now"
+          class="text-emerald-600 dark:text-emerald-400 font-medium hover:underline ml-1"
+        >
+          {strings.home.nowLinkText} &rarr;
+        </a>
+      </span>
+    </div>
+  </section>
+
+  <!-- Divider -->
+  <hr class="my-10 border-neutral-200/60 dark:border-neutral-800/60" />
+
+  <!-- Recent Writing -->
+  <section class="space-y-6">
+    <div class="flex items-center justify-between">
+      <h2
+        class="text-xs font-mono uppercase tracking-wider text-neutral-500 dark:text-neutral-400"
+      >
+        {strings.home.latestPosts}
+      </h2>
+      <a
+        href="/blog"
+        class="text-xs font-medium text-emerald-600 dark:text-emerald-400 hover:underline"
+      >
+        {strings.home.allPosts} &rarr;
+      </a>
+    </div>
+
+    <div class="space-y-4">
+      {
+        recentPosts.map((post) => (
+          <article class="group relative flex flex-col space-y-1">
+            <div class="flex items-baseline justify-between gap-4">
+              <a
+                href={`/blog/${post.slug}`}
+                class="text-[15px] font-medium text-neutral-900 dark:text-neutral-100 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors"
+              >
+                {post.title}
+              </a>
+              <span class="text-xs font-mono text-neutral-400 dark:text-neutral-500 shrink-0">
+                {post.date}
+              </span>
+            </div>
+            <p class="text-xs text-neutral-500 dark:text-neutral-400 line-clamp-2">
+              {post.excerpt}
+            </p>
+          </article>
+        ))
+      }
+    </div>
+  </section>
+
+  <!-- Divider -->
+  <hr class="my-10 border-neutral-200/60 dark:border-neutral-800/60" />
+
+  <!-- Featured Projects -->
+  <section class="space-y-6">
+    <div class="flex items-center justify-between">
+      <h2
+        class="text-xs font-mono uppercase tracking-wider text-neutral-500 dark:text-neutral-400"
+      >
+        {strings.home.featuredProjects}
+      </h2>
+      <a
+        href="/projects"
+        class="text-xs font-medium text-emerald-600 dark:text-emerald-400 hover:underline"
+      >
+        {strings.home.allProjects} &rarr;
+      </a>
+    </div>
+
+    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+      {
+        featuredProjects.map((project) => (
+          <a
+            href={project.url}
+            target={project.url.startsWith('http') ? '_blank' : undefined}
+            rel="noopener noreferrer"
+            class="block p-4 rounded border border-neutral-200/70 dark:border-neutral-800/70 hover:border-emerald-500/50 dark:hover:border-emerald-500/50 bg-white/50 dark:bg-neutral-900/40 transition-colors group"
+          >
+            <div class="flex items-center justify-between gap-2 mb-1.5">
+              <span class="font-medium text-sm text-neutral-900 dark:text-neutral-100 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors">
+                {project.name}
+              </span>
+              <span class="inline-flex items-center gap-1 text-[11px] font-mono text-emerald-600 dark:text-emerald-400">
+                <span class="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                <span>up</span>
+              </span>
+            </div>
+            <p class="text-xs text-neutral-600 dark:text-neutral-400 line-clamp-2 mb-3">
+              {project.description}
+            </p>
+            <div class="flex flex-wrap gap-1.5">
+              {project.tags.map((tag) => (
+                <span class="text-[10px] font-mono px-1.5 py-0.5 rounded bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-400">
+                  {tag}
+                </span>
+              ))}
+            </div>
+          </a>
+        ))
+      }
+    </div>
+  </section>
+</BaseLayout>
