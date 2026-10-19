@@ -4,19 +4,13 @@
 import { handle } from '@astrojs/cloudflare/handler';
 import { runStatusChecks } from './lib/status';
 
-export interface Env {
-  DB: any;
-  BUCKET: any;
-  ADMIN_EMAIL?: string;
-  CF_ACCESS_AUD?: string;
-  SITE_URL?: string;
-}
+export type WorkerEnv = Env;
 
 export default {
   /**
    * Main HTTP request handler delegating to Astro Cloudflare handler
    */
-  async fetch(request: Request, env: Env, ctx: any): Promise<Response> {
+  async fetch(request: Request, env: WorkerEnv, ctx: any): Promise<Response> {
     return handle(request, env, ctx);
   },
 
@@ -24,7 +18,7 @@ export default {
    * Cloudflare Cron Trigger scheduled() handler
    * Pings project endpoints every 5 minutes and updates D1 status history
    */
-  async scheduled(controller: any, env: Env, ctx: any): Promise<void> {
+  async scheduled(controller: any, env: WorkerEnv, ctx: any): Promise<void> {
     console.log(
       `[Worker] Cron trigger fired at: ${new Date(controller.scheduledTime).toISOString()}`
     );

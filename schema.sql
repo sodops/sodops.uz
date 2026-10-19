@@ -7,6 +7,7 @@ CREATE TABLE IF NOT EXISTS posts (
   slug TEXT UNIQUE NOT NULL,
   title TEXT NOT NULL,
   content TEXT NOT NULL,
+  content_html TEXT NOT NULL DEFAULT '',
   excerpt TEXT,
   cover_image TEXT,
   published INTEGER NOT NULL DEFAULT 0, -- 0 = draft, 1 = published

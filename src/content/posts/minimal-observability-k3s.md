@@ -4,7 +4,7 @@ slug: 'minimal-observability-k3s'
 published_at: 2026-10-15T09:00:00Z
 excerpt: 'Setting up lightweight metrics and logging on edge Kubernetes clusters without eating all your RAM.'
 cover_image: ''
-draft: false
+draft: true
 tags: ['k3s', 'prometheus', 'grafana', 'devops']
 reading_time_minutes: 4
 ---

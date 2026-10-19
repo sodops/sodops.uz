@@ -26,6 +26,6 @@ export default [
     },
   },
   {
-    ignores: ['dist/**', '.astro/**', 'node_modules/**', '.wrangler/**'],
+    ignores: ['dist/**', '.astro/**', 'node_modules/**', '.wrangler/**', 'worker-configuration.d.ts'],
   },
 ];

@@ -4,7 +4,7 @@ slug: 'why-text-first-websites'
 published_at: 2026-09-20T11:00:00Z
 excerpt: 'Ditching heavy hero banners, complex design patterns, and bloated client JavaScript for clean typography and high information density.'
 cover_image: ''
-draft: false
+draft: true
 tags: ['design', 'web', 'philosophy']
 reading_time_minutes: 3
 ---

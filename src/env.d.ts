@@ -1,16 +1,27 @@
 /// <reference path="../.astro/types.d.ts" />
+/// <reference types="@cloudflare/workers-types" />
 
-type D1Database = any;
-type R2Bucket = any;
+declare namespace Cloudflare {
+  interface Env {
+    DB?: import('@cloudflare/workers-types').D1Database;
+    UPLOADS_BUCKET?: import('@cloudflare/workers-types').R2Bucket;
+    SESSION?: import('@cloudflare/workers-types').KVNamespace;
+    ADMIN_EMAIL?: string;
+    CF_ACCESS_AUD?: string;
+    DEV_BYPASS_AUTH?: string;
+    SITE_URL?: string;
+    [key: string]: any;
+  }
+}
 
-type Runtime = import('@astrojs/cloudflare').Runtime<{
-  DB: D1Database;
-  BUCKET: R2Bucket;
-  ADMIN_EMAIL?: string;
-  CF_ACCESS_AUD?: string;
-  SITE_URL?: string;
-}>;
+interface Env extends Cloudflare.Env {}
+
+type CloudflareEnv = Env;
 
 declare namespace App {
-  interface Locals extends Runtime {}
+  interface Locals {
+    runtime?: {
+      env: CloudflareEnv;
+    };
+  }
 }

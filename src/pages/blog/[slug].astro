@@ -2,6 +2,8 @@
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import { getCollection, render } from 'astro:content';
 import { strings } from '../../lib/strings';
+import { getPostBySlug, getPublishedPosts } from '../../lib/db';
+import { extractHeadings } from '../../lib/markdown';
 
 // Required: On-demand rendering with Cloudflare edge caching
 export const prerender = false;
@@ -12,18 +14,88 @@ if (!slug) {
   return Astro.redirect('/404');
 }
 
-// Fetch all published posts sorted by date
-const posts = await getCollection('posts', ({ data }) => !data.draft);
-posts.sort((a, b) => b.data.published_at.getTime() - a.data.published_at.getTime());
+import { env } from 'cloudflare:workers';
 
-const postIndex = posts.findIndex((p) => p.data.slug === slug);
-if (postIndex === -1) {
-  return new Response(null, { status: 404, statusText: 'Not Found' });
+let postTitle = '';
+let postExcerpt = '';
+let postPublishedAt = new Date();
+let postReadingTime = 1;
+let postTags: string[] = [];
+let contentHtml = '';
+let tocHeadings: Array<{ depth: number; text: string; slug: string }> = [];
+let prevPostLink: { slug: string; title: string } | null = null;
+let nextPostLink: { slug: string; title: string } | null = null;
+
+// 1. Primary: Try to fetch from D1 database
+if (env?.DB) {
+  const d1Post = await getPostBySlug(env.DB, slug);
+  if (d1Post) {
+    postTitle = d1Post.title;
+    postExcerpt = d1Post.excerpt;
+    postPublishedAt = new Date(d1Post.published_at || d1Post.created_at);
+    postReadingTime = d1Post.reading_time_minutes;
+    postTags = d1Post.tags;
+    // Pre-rendered HTML served with < 0.5ms CPU, completely preventing 1102 errors
+    contentHtml = d1Post.content_html;
+    tocHeadings = extractHeadings(d1Post.content).filter(
+      (h) => h.depth === 2 || h.depth === 3
+    );
+
+    // Prev / Next from D1
+    const allD1Posts = await getPublishedPosts(env.DB);
+    const idx = allD1Posts.findIndex((p) => p.slug === slug);
+    if (idx > -1) {
+      if (idx < allD1Posts.length - 1) {
+        prevPostLink = {
+          slug: allD1Posts[idx + 1].slug,
+          title: allD1Posts[idx + 1].title,
+        };
+      }
+      if (idx > 0) {
+        nextPostLink = {
+          slug: allD1Posts[idx - 1].slug,
+          title: allD1Posts[idx - 1].title,
+        };
+      }
+    }
+  }
 }
 
-const post = posts[postIndex];
-const prevPost = postIndex < posts.length - 1 ? posts[postIndex + 1] : null;
-const nextPost = postIndex > 0 ? posts[postIndex - 1] : null;
+// 2. Fallback: If not in D1, check Content Collections (e.g. dev without D1)
+if (!contentHtml) {
+  const collectionPosts = await getCollection('posts', ({ data }) => !data.draft);
+  collectionPosts.sort(
+    (a, b) => b.data.published_at.getTime() - a.data.published_at.getTime()
+  );
+  const postIndex = collectionPosts.findIndex((p) => p.data.slug === slug);
+
+  if (postIndex === -1) {
+    return new Response(null, { status: 404, statusText: 'Not Found' });
+  }
+
+  const cPost = collectionPosts[postIndex];
+  postTitle = cPost.data.title;
+  postExcerpt = cPost.data.excerpt;
+  postPublishedAt = cPost.data.published_at;
+  postReadingTime = cPost.data.reading_time_minutes;
+  postTags = cPost.data.tags;
+
+  const rendered = await render(cPost);
+  tocHeadings = rendered.headings.filter((h) => h.depth === 2 || h.depth === 3);
+
+  if (postIndex < collectionPosts.length - 1) {
+    prevPostLink = {
+      slug: collectionPosts[postIndex + 1].data.slug,
+      title: collectionPosts[postIndex + 1].data.title,
+    };
+  }
+  if (postIndex > 0) {
+    nextPostLink = {
+      slug: collectionPosts[postIndex - 1].data.slug,
+      title: collectionPosts[postIndex - 1].data.title,
+    };
+  }
+}
 
 // Edge cache tags: group tag 'blog' plus specific post tag
 Astro.cache.set({
@@ -31,9 +103,6 @@ Astro.cache.set({
   swr: 600,
   tags: ['blog', `post-${slug}`],
 });
-
-const { Content, headings } = await render(post);
-const tocHeadings = headings.filter((h) => h.depth === 2 || h.depth === 3);
 
 function formatDate(date: Date): string {
   return date.toISOString().split('T')[0];
@@ -45,25 +114,25 @@ const postUrl = new URL(Astro.url.pathname, Astro.site || 'https://sodops.uz').t
 const schemaOrgArticle = {
   '@context': 'https://schema.org',
   '@type': 'BlogPosting',
-  headline: post.data.title,
-  description: post.data.excerpt,
+  headline: postTitle,
+  description: postExcerpt,
   url: postUrl,
-  datePublished: post.data.published_at.toISOString(),
+  datePublished: postPublishedAt.toISOString(),
   author: {
     '@type': 'Person',
     name: strings.site.author,
     url: 'https://sodops.uz',
   },
-  keywords: post.data.tags.join(', '),
+  keywords: postTags.join(', '),
 };
 ---
 
 <BaseLayout
-  title={post.data.title}
-  description={post.data.excerpt}
+  title={postTitle}
+  description={postExcerpt}
   article={{
-    publishedTime: post.data.published_at.toISOString(),
-    tags: post.data.tags,
+    publishedTime: postPublishedAt.toISOString(),
+    tags: postTags,
   }}
 >
   <!-- JSON-LD Structured Data -->
@@ -87,24 +156,24 @@ const schemaOrgArticle = {
       <h1
         class="text-2xl sm:text-3xl font-semibold tracking-tight text-neutral-900 dark:text-neutral-100 font-sans leading-tight"
       >
-        {post.data.title}
+        {postTitle}
       </h1>
 
       <div
         class="flex flex-wrap items-center gap-2 sm:gap-4 text-xs font-mono text-neutral-500 dark:text-neutral-400"
       >
-        <time datetime={post.data.published_at.toISOString()}>
-          {formatDate(post.data.published_at)}
+        <time datetime={postPublishedAt.toISOString()}>
+          {formatDate(postPublishedAt)}
         </time>
         <span>&middot;</span>
         <span>
-          {post.data.reading_time_minutes}
+          {postReadingTime}
           {strings.blog.readingTime}
         </span>
         <span>&middot;</span>
         <div class="flex flex-wrap gap-1.5">
           {
-            post.data.tags.map((tag) => (
+            postTags.map((tag) => (
               <a
                 href={`/blog?tag=${encodeURIComponent(tag)}`}
                 class="hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors"
@@ -143,16 +212,15 @@ const schemaOrgArticle = {
       )
     }
 
-    <!-- Post Body (Prose Styled) -->
+    <!-- Post Body (Pre-rendered content_html served with zero runtime Shiki overhead) -->
     <div
       class="prose prose-neutral dark:prose-invert max-w-none text-[15px] sm:text-base leading-relaxed
         prose-headings:font-semibold prose-headings:tracking-tight prose-headings:text-neutral-900 dark:prose-headings:text-neutral-100
         prose-a:text-emerald-600 dark:prose-a:text-emerald-400 prose-a:underline prose-a:underline-offset-2 prose-a:decoration-emerald-500/40 hover:prose-a:decoration-emerald-500
         prose-code:font-mono prose-code:text-[13px] prose-code:before:content-none prose-code:after:content-none
-        prose-pre:bg-transparent prose-pre:p-0 prose-pre:border-0"
-    >
-      <Content />
-    </div>
+        prose-pre:bg-neutral-100 dark:prose-pre:bg-neutral-900/90 prose-pre:border prose-pre:border-neutral-200/80 dark:prose-pre:border-neutral-800"
+      set:html={contentHtml}
+    />
 
     <!-- Divider -->
     <hr class="border-neutral-200/60 dark:border-neutral-800/60" />
@@ -180,7 +248,7 @@ const schemaOrgArticle = {
       </div>
 
       <a
-        href={`mailto:${strings.site.email}?subject=Feedback on "${post.data.title}"`}
+        href={`mailto:${strings.site.email}?subject=Feedback on "${postTitle}"`}
         class="hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors"
       >
         Send feedback via email &rarr;
@@ -193,16 +261,16 @@ const schemaOrgArticle = {
       class="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-4 border-t border-neutral-200/60 dark:border-neutral-800/60"
     >
       {
-        prevPost ? (
+        prevPostLink ? (
           <a
-            href={`/blog/${prevPost.data.slug}`}
+            href={`/blog/${prevPostLink.slug}`}
             class="p-3 rounded border border-neutral-200/60 dark:border-neutral-800/60 hover:border-emerald-500/50 transition-colors group flex flex-col justify-between"
           >
             <span class="text-[11px] font-mono text-neutral-400 dark:text-neutral-500 mb-1">
               &larr; {strings.blog.prevPost}
             </span>
             <span class="text-sm font-medium text-neutral-900 dark:text-neutral-100 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors line-clamp-1">
-              {prevPost.data.title}
+              {prevPostLink.title}
             </span>
           </a>
         ) : (
@@ -211,16 +279,16 @@ const schemaOrgArticle = {
       }
 
       {
-        nextPost && (
+        nextPostLink && (
           <a
-            href={`/blog/${nextPost.data.slug}`}
+            href={`/blog/${nextPostLink.slug}`}
             class="p-3 rounded border border-neutral-200/60 dark:border-neutral-800/60 hover:border-emerald-500/50 transition-colors group flex flex-col justify-between text-right sm:col-start-2"
           >
             <span class="text-[11px] font-mono text-neutral-400 dark:text-neutral-500 mb-1">
               {strings.blog.nextPost} &rarr;
             </span>
             <span class="text-sm font-medium text-neutral-900 dark:text-neutral-100 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors line-clamp-1">
-              {nextPost.data.title}
+              {nextPostLink.title}
             </span>
           </a>
         )
@@ -251,11 +319,10 @@ const schemaOrgArticle = {
 
       // 2. Add copy button to each code block
       function setupCodeBlockCopy() {
-        const blocks = document.querySelectorAll('pre.astro-code');
+        const blocks = document.querySelectorAll('pre');
         blocks.forEach((block) => {
           if (block.querySelector('.code-copy-btn')) return;
 
-          // Wrap pre with relative container if needed
           block.style.position = 'relative';
 
           const btn = document.createElement('button');
@@ -292,7 +359,6 @@ const schemaOrgArticle = {
         setupCodeBlockCopy();
       }
 
-      // Re-run on Astro view transitions page swaps
       document.addEventListener('astro:page-load', setupCodeBlockCopy);
     })();
   </script>

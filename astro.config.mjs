@@ -2,7 +2,6 @@
 import { defineConfig } from 'astro/config';
 import cloudflare from '@astrojs/cloudflare';
 import preact from '@astrojs/preact';
-import sitemap from '@astrojs/sitemap';
 import tailwindcss from '@tailwindcss/vite';
 import { cacheCloudflare } from '@astrojs/cloudflare/cache';
 
@@ -10,7 +9,7 @@ export default defineConfig({
   site: 'https://sodops.uz',
   output: 'server',
   adapter: cloudflare(),
-  integrations: [preact(), sitemap()],
+  integrations: [preact()],
   vite: {
     plugins: [tailwindcss()],
   },
@@ -43,5 +42,7 @@ export default defineConfig({
     '/blog/[slug]': { maxAge: 300, swr: 600, tags: ['blog'] },
     // RSS feed: cache 5 min, tagged with blog
     '/feed.xml': { maxAge: 300, swr: 600, tags: ['blog'] },
+    // Dynamic sitemap: cache 1 hour, tagged with blog
+    '/sitemap.xml': { maxAge: 3600, swr: 86400, tags: ['blog'] },
   },
 });

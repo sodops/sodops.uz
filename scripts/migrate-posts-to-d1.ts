@@ -1,11 +1,14 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
+import { renderAndSanitizeMarkdown } from '../src/lib/markdown';
 
 /**
  * Migration Script: Migrate Markdown Seed Posts into Cloudflare D1
  *
  * Reads all Markdown files in src/content/posts/, parses YAML frontmatter
- * and markdown body, and outputs an idempotent seed.sql file for D1.
+ * and markdown body, pre-renders HTML using the shared markdown pipeline
+ * (rehype-sanitize + code highlighting) to content_html column, and outputs
+ * an idempotent seed.sql file for D1.
  *
  * Usage:
  *   npx tsx scripts/migrate-posts-to-d1.ts
@@ -83,7 +86,7 @@ function escapeSql(str: string): string {
   return str.replace(/'/g, "''");
 }
 
-function generateMigrationSql(): string {
+async function generateMigrationSql(): Promise<string> {
   const postsDir = path.resolve(process.cwd(), 'src/content/posts');
   if (!fs.existsSync(postsDir)) {
     throw new Error(`Directory ${postsDir} does not exist`);
@@ -103,16 +106,19 @@ function generateMigrationSql(): string {
     const fullPath = path.join(postsDir, file);
     const { frontmatter, content } = parseMarkdownFile(fullPath);
 
+    // Pre-render content_html using shared pipeline to save runtime CPU on Workers
+    const contentHtml = await renderAndSanitizeMarkdown(content);
+
     const postId = `post_${frontmatter.slug.replace(/[^a-z0-9]/gi, '_')}`;
     const published = frontmatter.draft ? 0 : 1;
     const publishedAt = frontmatter.published_at || new Date().toISOString();
     const readingTime = frontmatter.reading_time_minutes || 1;
     const coverImage = frontmatter.cover_image || '';
 
-    // Insert or replace post
+    // Insert or replace post with pre-rendered content_html
     statements.push(
-      `INSERT OR REPLACE INTO posts (id, slug, title, content, excerpt, cover_image, published, published_at, reading_time_minutes) ` +
-        `VALUES ('${escapeSql(postId)}', '${escapeSql(frontmatter.slug)}', '${escapeSql(frontmatter.title)}', '${escapeSql(content)}', '${escapeSql(frontmatter.excerpt)}', '${escapeSql(coverImage)}', ${published}, '${escapeSql(publishedAt)}', ${readingTime});`
+      `INSERT OR REPLACE INTO posts (id, slug, title, content, content_html, excerpt, cover_image, published, published_at, reading_time_minutes) ` +
+        `VALUES ('${escapeSql(postId)}', '${escapeSql(frontmatter.slug)}', '${escapeSql(frontmatter.title)}', '${escapeSql(content)}', '${escapeSql(contentHtml)}', '${escapeSql(frontmatter.excerpt)}', '${escapeSql(coverImage)}', ${published}, '${escapeSql(publishedAt)}', ${readingTime});`
     );
 
     // Collect tags
@@ -155,9 +161,15 @@ function generateMigrationSql(): string {
 }
 
 // Generate seed.sql
-const sql = generateMigrationSql();
-const outPath = path.resolve(process.cwd(), 'seed.sql');
-fs.writeFileSync(outPath, sql, 'utf-8');
-console.log(
-  `[migrate-posts-to-d1] Successfully generated ${outPath} (${sql.length} bytes)`
-);
+generateMigrationSql()
+  .then((sql) => {
+    const outPath = path.resolve(process.cwd(), 'seed.sql');
+    fs.writeFileSync(outPath, sql, 'utf-8');
+    console.log(
+      `[migrate-posts-to-d1] Successfully generated ${outPath} (${sql.length} bytes)`
+    );
+  })
+  .catch((err) => {
+    console.error('Migration failed:', err);
+    process.exit(1);
+  });

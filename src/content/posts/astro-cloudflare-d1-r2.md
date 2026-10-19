@@ -4,7 +4,7 @@ slug: 'astro-cloudflare-d1-r2'
 published_at: 2026-10-02T14:30:00Z
 excerpt: 'Architecting a fast, serverless publishing site with edge SQLite, asset object storage, and zero cold-start rendering.'
 cover_image: ''
-draft: false
+draft: true
 tags: ['astro', 'cloudflare', 'd1', 'r2', 'devops']
 reading_time_minutes: 6
 ---
@@ -58,8 +58,8 @@ declare namespace App {
 In your server route or Astro frontmatter, executing a query is as simple as:
 
 ```typescript
-const { DB } = Astro.locals.runtime.env;
-const { results } = await DB.prepare(
+import { env } from 'cloudflare:workers';
+const { results } = await env.DB.prepare(
   'SELECT id, title, slug, published_at FROM posts WHERE published = 1 ORDER BY published_at DESC LIMIT 10'
 ).all();
 ```
@@ -69,8 +69,10 @@ const { results } = await DB.prepare(
 When uploading images through a private admin panel, we can stream the `FormData` file buffer directly to R2 without storing anything on disk:
 
 ```typescript
-export const POST: APIRoute = async ({ request, locals }) => {
-  const { UPLOADS_BUCKET } = locals.runtime.env;
+import { env } from 'cloudflare:workers';
+
+export const POST: APIRoute = async ({ request }) => {
+  const { UPLOADS_BUCKET } = env;
   const formData = await request.formData();
   const file = formData.get('file') as File;
 

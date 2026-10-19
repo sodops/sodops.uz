@@ -8,6 +8,7 @@ export interface AuthContext {
   adminEmail: string;
   expectedAud?: string;
   devBypassAuth?: boolean;
+  publicKey?: CryptoKey;
 }
 
 export interface AuthResult {
@@ -38,7 +39,8 @@ export function isDevAuthBypassAllowed(isDev: boolean, host: string | null): boo
 export async function authenticateAdminRequest(
   context: AuthContext
 ): Promise<AuthResult> {
-  const { isDev, host, jwtAssertion, adminEmail, devBypassAuth, expectedAud } = context;
+  const { isDev, host, jwtAssertion, adminEmail, devBypassAuth, expectedAud, publicKey } =
+    context;
 
   if (!adminEmail) {
     return {
@@ -80,6 +82,24 @@ export async function authenticateAdminRequest(
       };
     }
 
+    // Cryptographic signature verification using Web Crypto (RS256)
+    if (publicKey) {
+      const data = new TextEncoder().encode(`${parts[0]}.${parts[1]}`);
+      const signatureBytes = base64UrlToUint8Array(parts[2]);
+      const valid = await crypto.subtle.verify(
+        { name: 'RSASSA-PKCS1-v1_5' },
+        publicKey,
+        signatureBytes as unknown as BufferSource,
+        data as unknown as BufferSource
+      );
+      if (!valid) {
+        return {
+          authenticated: false,
+          error: 'Invalid JWT cryptographic signature',
+        };
+      }
+    }
+
     // Decode payload
     const base64Url = parts[1];
     const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
@@ -101,11 +121,16 @@ export async function authenticateAdminRequest(
     }
 
     // Verify Audience (if expectedAud configured)
-    if (expectedAud && payload.aud && !payload.aud.includes(expectedAud)) {
-      return {
-        authenticated: false,
-        error: 'Audience mismatch',
-      };
+    if (expectedAud && payload.aud) {
+      const audMatches = Array.isArray(payload.aud)
+        ? payload.aud.includes(expectedAud)
+        : payload.aud === expectedAud;
+      if (!audMatches) {
+        return {
+          authenticated: false,
+          error: 'Audience mismatch',
+        };
+      }
     }
 
     // Verify authorized admin email matches ADMIN_EMAIL env var
@@ -126,4 +151,19 @@ export async function authenticateAdminRequest(
       error: `JWT parsing error: ${err?.message || 'Unknown error'}`,
     };
   }
+}
+
+/**
+ * Helper to convert base64url string to Uint8Array for Web Crypto APIs.
+ */
+export function base64UrlToUint8Array(base64Url: string): Uint8Array {
+  const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+  const pad = base64.length % 4;
+  const padded = pad ? base64 + '='.repeat(4 - pad) : base64;
+  const binary = atob(padded);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) {
+    bytes[i] = binary.charCodeAt(i);
+  }
+  return bytes;
 }
