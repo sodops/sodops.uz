@@ -1,0 +1,299 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import { getCollection, render } from 'astro:content';
+import { strings } from '../../lib/strings';
+
+// Required: On-demand rendering with Cloudflare edge caching
+export const prerender = false;
+
+const { slug } = Astro.params;
+
+if (!slug) {
+  return Astro.redirect('/404');
+}
+
+// Fetch all published posts sorted by date
+const posts = await getCollection('posts', ({ data }) => !data.draft);
+posts.sort((a, b) => b.data.published_at.getTime() - a.data.published_at.getTime());
+
+const postIndex = posts.findIndex((p) => p.data.slug === slug);
+if (postIndex === -1) {
+  return new Response(null, { status: 404, statusText: 'Not Found' });
+}
+
+const post = posts[postIndex];
+const prevPost = postIndex < posts.length - 1 ? posts[postIndex + 1] : null;
+const nextPost = postIndex > 0 ? posts[postIndex - 1] : null;
+
+// Edge cache tags: group tag 'blog' plus specific post tag
+Astro.cache.set({
+  maxAge: 300,
+  swr: 600,
+  tags: ['blog', `post-${slug}`],
+});
+
+const { Content, headings } = await render(post);
+const tocHeadings = headings.filter((h) => h.depth === 2 || h.depth === 3);
+
+function formatDate(date: Date): string {
+  return date.toISOString().split('T')[0];
+}
+
+const postUrl = new URL(Astro.url.pathname, Astro.site || 'https://sodops.uz').toString();
+
+// JSON-LD structured data for BlogPosting
+const schemaOrgArticle = {
+  '@context': 'https://schema.org',
+  '@type': 'BlogPosting',
+  headline: post.data.title,
+  description: post.data.excerpt,
+  url: postUrl,
+  datePublished: post.data.published_at.toISOString(),
+  author: {
+    '@type': 'Person',
+    name: strings.site.author,
+    url: 'https://sodops.uz',
+  },
+  keywords: post.data.tags.join(', '),
+};
+---
+
+<BaseLayout
+  title={post.data.title}
+  description={post.data.excerpt}
+  article={{
+    publishedTime: post.data.published_at.toISOString(),
+    tags: post.data.tags,
+  }}
+>
+  <!-- JSON-LD Structured Data -->
+  <script type="application/ld+json" set:html={JSON.stringify(schemaOrgArticle)} />
+
+  <article class="space-y-8">
+    <!-- Back Navigation -->
+    <div>
+      <a
+        href="/blog"
+        class="inline-flex items-center text-xs font-mono text-neutral-500 dark:text-neutral-400 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors"
+      >
+        {strings.blog.backToBlog}
+      </a>
+    </div>
+
+    <!-- Post Header -->
+    <header
+      class="space-y-3 pb-6 border-b border-neutral-200/60 dark:border-neutral-800/60"
+    >
+      <h1
+        class="text-2xl sm:text-3xl font-semibold tracking-tight text-neutral-900 dark:text-neutral-100 font-sans leading-tight"
+      >
+        {post.data.title}
+      </h1>
+
+      <div
+        class="flex flex-wrap items-center gap-2 sm:gap-4 text-xs font-mono text-neutral-500 dark:text-neutral-400"
+      >
+        <time datetime={post.data.published_at.toISOString()}>
+          {formatDate(post.data.published_at)}
+        </time>
+        <span>&middot;</span>
+        <span>
+          {post.data.reading_time_minutes}
+          {strings.blog.readingTime}
+        </span>
+        <span>&middot;</span>
+        <div class="flex flex-wrap gap-1.5">
+          {
+            post.data.tags.map((tag) => (
+              <a
+                href={`/blog?tag=${encodeURIComponent(tag)}`}
+                class="hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors"
+              >
+                #{tag}
+              </a>
+            ))
+          }
+        </div>
+      </div>
+    </header>
+
+    <!-- Table of Contents (if 2 or more headings exist) -->
+    {
+      tocHeadings.length >= 2 && (
+        <nav
+          aria-label="Table of contents"
+          class="p-4 rounded-md border border-neutral-200/60 dark:border-neutral-800/60 bg-neutral-100/50 dark:bg-neutral-900/30 text-xs"
+        >
+          <div class="font-mono uppercase tracking-wider text-neutral-400 dark:text-neutral-500 mb-2 font-semibold">
+            {strings.blog.tableOfContents}
+          </div>
+          <ul class="space-y-1.5">
+            {tocHeadings.map((heading) => (
+              <li class={heading.depth === 3 ? 'pl-3' : ''}>
+                <a
+                  href={`#${heading.slug}`}
+                  class="text-neutral-600 dark:text-neutral-400 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors line-clamp-1"
+                >
+                  {heading.text}
+                </a>
+              </li>
+            ))}
+          </ul>
+        </nav>
+      )
+    }
+
+    <!-- Post Body (Prose Styled) -->
+    <div
+      class="prose prose-neutral dark:prose-invert max-w-none text-[15px] sm:text-base leading-relaxed
+        prose-headings:font-semibold prose-headings:tracking-tight prose-headings:text-neutral-900 dark:prose-headings:text-neutral-100
+        prose-a:text-emerald-600 dark:prose-a:text-emerald-400 prose-a:underline prose-a:underline-offset-2 prose-a:decoration-emerald-500/40 hover:prose-a:decoration-emerald-500
+        prose-code:font-mono prose-code:text-[13px] prose-code:before:content-none prose-code:after:content-none
+        prose-pre:bg-transparent prose-pre:p-0 prose-pre:border-0"
+    >
+      <Content />
+    </div>
+
+    <!-- Divider -->
+    <hr class="border-neutral-200/60 dark:border-neutral-800/60" />
+
+    <!-- Post Footer Actions: Share & Feedback -->
+    <div
+      class="flex items-center justify-between text-xs font-mono text-neutral-500 dark:text-neutral-400"
+    >
+      <div class="flex items-center gap-2">
+        <button
+          type="button"
+          id="share-btn"
+          class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded border border-neutral-200 dark:border-neutral-800 hover:border-emerald-500/60 hover:text-neutral-900 dark:hover:text-neutral-100 transition-colors cursor-pointer"
+        >
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z"
+            ></path>
+          </svg>
+          <span id="share-text">{strings.blog.sharePost}</span>
+        </button>
+      </div>
+
+      <a
+        href={`mailto:${strings.site.email}?subject=Feedback on "${post.data.title}"`}
+        class="hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors"
+      >
+        Send feedback via email &rarr;
+      </a>
+    </div>
+
+    <!-- Prev / Next Post Navigation -->
+    <nav
+      aria-label="Previous and Next post"
+      class="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-4 border-t border-neutral-200/60 dark:border-neutral-800/60"
+    >
+      {
+        prevPost ? (
+          <a
+            href={`/blog/${prevPost.data.slug}`}
+            class="p-3 rounded border border-neutral-200/60 dark:border-neutral-800/60 hover:border-emerald-500/50 transition-colors group flex flex-col justify-between"
+          >
+            <span class="text-[11px] font-mono text-neutral-400 dark:text-neutral-500 mb-1">
+              &larr; {strings.blog.prevPost}
+            </span>
+            <span class="text-sm font-medium text-neutral-900 dark:text-neutral-100 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors line-clamp-1">
+              {prevPost.data.title}
+            </span>
+          </a>
+        ) : (
+          <div />
+        )
+      }
+
+      {
+        nextPost && (
+          <a
+            href={`/blog/${nextPost.data.slug}`}
+            class="p-3 rounded border border-neutral-200/60 dark:border-neutral-800/60 hover:border-emerald-500/50 transition-colors group flex flex-col justify-between text-right sm:col-start-2"
+          >
+            <span class="text-[11px] font-mono text-neutral-400 dark:text-neutral-500 mb-1">
+              {strings.blog.nextPost} &rarr;
+            </span>
+            <span class="text-sm font-medium text-neutral-900 dark:text-neutral-100 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors line-clamp-1">
+              {nextPost.data.title}
+            </span>
+          </a>
+        )
+      }
+    </nav>
+  </article>
+
+  <!-- Code Block Copy Button Script & Share Button Script -->
+  <script is:inline>
+    (function () {
+      // 1. Share post URL button
+      const shareBtn = document.getElementById('share-btn');
+      const shareText = document.getElementById('share-text');
+      if (shareBtn && shareText) {
+        shareBtn.addEventListener('click', async () => {
+          try {
+            await navigator.clipboard.writeText(window.location.href);
+            const original = shareText.textContent;
+            shareText.textContent = 'Link copied!';
+            setTimeout(() => {
+              shareText.textContent = original;
+            }, 2000);
+          } catch (e) {
+            console.error('Clipboard copy failed', e);
+          }
+        });
+      }
+
+      // 2. Add copy button to each code block
+      function setupCodeBlockCopy() {
+        const blocks = document.querySelectorAll('pre.astro-code');
+        blocks.forEach((block) => {
+          if (block.querySelector('.code-copy-btn')) return;
+
+          // Wrap pre with relative container if needed
+          block.style.position = 'relative';
+
+          const btn = document.createElement('button');
+          btn.type = 'button';
+          btn.className =
+            'code-copy-btn absolute top-2 right-2 px-2 py-1 text-[11px] font-mono rounded bg-neutral-200/80 dark:bg-neutral-800/80 text-neutral-700 dark:text-neutral-300 opacity-0 hover:opacity-100 focus:opacity-100 transition-opacity cursor-pointer';
+          btn.textContent = 'Copy';
+          btn.setAttribute('aria-label', 'Copy code to clipboard');
+
+          block.addEventListener('mouseenter', () => (btn.style.opacity = '1'));
+          block.addEventListener('mouseleave', () => (btn.style.opacity = '0'));
+
+          btn.addEventListener('click', async () => {
+            const code = block.querySelector('code');
+            const textToCopy = code ? code.innerText : block.innerText;
+            try {
+              await navigator.clipboard.writeText(textToCopy);
+              btn.textContent = 'Copied!';
+              setTimeout(() => {
+                btn.textContent = 'Copy';
+              }, 2000);
+            } catch (err) {
+              console.error('Failed to copy code', err);
+            }
+          });
+
+          block.appendChild(btn);
+        });
+      }
+
+      if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', setupCodeBlockCopy);
+      } else {
+        setupCodeBlockCopy();
+      }
+
+      // Re-run on Astro view transitions page swaps
+      document.addEventListener('astro:page-load', setupCodeBlockCopy);
+    })();
+  </script>
+</BaseLayout>

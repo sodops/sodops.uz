@@ -2,43 +2,31 @@
 import BaseLayout from '../layouts/BaseLayout.astro';
 import { strings } from '../lib/strings';
 
+import { getCollection } from 'astro:content';
+
 // Required: On-demand rendering with Cloudflare edge caching
 export const prerender = false;
 
-// Set edge cache header: public, max-age=0, s-maxage=60, stale-while-revalidate=300
-Astro.response.headers.set(
-  'Cache-Control',
-  'public, max-age=0, s-maxage=60, stale-while-revalidate=300'
-);
+// Use Astro route cache (cacheCloudflare provider) instead of raw Cache-Control.
+// Allows Phase 3 admin to call Astro.cache.invalidate({ tags: ['blog', 'home'] })
+// for instant CDN purge on post save. routeRules in astro.config.mjs seeds the
+// defaults; this call adds the home-specific tag and can override maxAge per request.
+Astro.cache.set({ maxAge: 60, swr: 300, tags: ['home', 'blog'] });
 
-// Placeholder recent posts (will read from D1 in Phase 3)
-// TODO(sodiq): Replace with real D1 query once D1 is wired in Phase 3
-const recentPosts = [
-  {
-    title: 'Minimal observability: Monitoring k3s with Prometheus & Grafana',
-    slug: 'minimal-observability-k3s',
-    date: '2026-10-15',
-    readingTime: '4 min read',
-    excerpt:
-      'Setting up lightweight metrics and logging on edge Kubernetes clusters without eating all your RAM.',
-  },
-  {
-    title: 'Deploying Astro on Cloudflare Workers with D1 and R2',
-    slug: 'astro-cloudflare-d1-r2',
-    date: '2026-10-02',
-    readingTime: '6 min read',
-    excerpt:
-      'Building zero-rebuild publishing platforms with Cloudflare edge caching and SQLite at the edge.',
-  },
-  {
-    title: 'Why I prefer text-first personal websites',
-    slug: 'why-text-first-websites',
-    date: '2026-09-20',
-    readingTime: '3 min read',
-    excerpt:
-      'Ditching heavy hero banners and complex design patterns for clean typography and high-density information.',
-  },
-];
+// Temporary: X-Rendered-At header proves CDN cache hits.
+// Two requests within 60s should return the same timestamp value.
+// Remove this header once caching is confirmed working.
+Astro.response.headers.set('X-Rendered-At', new Date().toISOString());
+
+// Load latest 3 published posts from posts collection (will migrate to D1 in Phase 3)
+const allPosts = await getCollection('posts', ({ data }) => !data.draft);
+const recentPosts = allPosts
+  .sort((a, b) => b.data.published_at.getTime() - a.data.published_at.getTime())
+  .slice(0, 3);
+
+function formatDate(date: Date): string {
+  return date.toISOString().split('T')[0];
+}
 
 // Placeholder featured projects (will read from D1 in Phase 4)
 // TODO(sodiq): Replace with real D1 query once D1 is wired in Phase 4
@@ -177,17 +165,17 @@ const featuredProjects = [
           <article class="group relative flex flex-col space-y-1">
             <div class="flex items-baseline justify-between gap-4">
               <a
-                href={`/blog/${post.slug}`}
+                href={`/blog/${post.data.slug}`}
                 class="text-[15px] font-medium text-neutral-900 dark:text-neutral-100 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors"
               >
-                {post.title}
+                {post.data.title}
               </a>
               <span class="text-xs font-mono text-neutral-400 dark:text-neutral-500 shrink-0">
-                {post.date}
+                {formatDate(post.data.published_at)}
               </span>
             </div>
             <p class="text-xs text-neutral-500 dark:text-neutral-400 line-clamp-2">
-              {post.excerpt}
+              {post.data.excerpt}
             </p>
           </article>
         ))

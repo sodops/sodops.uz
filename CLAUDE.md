@@ -58,28 +58,31 @@ pnpm format          # prettier --write .
 ## 4. Architecture & Key Rules
 
 1. **Rendering & Caching**:
-   - Home page (`/`) and Blog pages (`/blog`, `/blog/[slug]`) are rendered on-demand (`export const prerender = false`) backed by D1.
-   - All public on-demand routes must set:
-     `Cache-Control: public, max-age=0, s-maxage=60, stale-while-revalidate=300`.
+   - Home page (`/`) and Blog pages (`/blog`, `/blog/[slug]`) are rendered on-demand (`export const prerender = false`).
+   - Caching uses Astro's route cache via `cacheCloudflare()` provider configured in `astro.config.mjs` and `Astro.cache.set({ maxAge, swr, tags })`.
+   - Tags like `['home', 'blog']` are used so that Phase 3 admin can call `Astro.cache.invalidate({ tags: ['blog'] })` for instant CDN purging.
    - Truly static shells (`/uses`, `/now`, `/404`) use `export const prerender = true`.
-2. **Cron Triggers (Status Checks)**:
+2. **Session KV Namespace**:
+   - The `SESSION` KV namespace in `wrangler.jsonc` is automatically used by `@astrojs/cloudflare` v14 to store Astro sessions. It must be kept configured.
+3. **Cron Triggers (Status Checks)**:
    - Wired via `wrangler.jsonc` (`triggers.crons: ["*/5 * * * *"]`).
    - Implemented via custom worker entrypoint (`src/worker.ts`) exporting `scheduled()` that calls `src/lib/status.ts` directly.
-   - No public unauthenticated cron endpoints.
-3. **Admin Security & Authentication**:
+   - Note: Cloudflare Workers Free accounts allow 0 crons (Workers Paid allows 1,000).
+4. **Admin Security & Authentication**:
    - `/admin/*` and `/api/admin/*` are protected by Cloudflare Access.
    - API endpoints verify `Cf-Access-Jwt-Assertion` signature, `aud`, `exp`, and email.
    - `ADMIN_EMAIL` is loaded from environment variables (never hardcoded).
    - `DEV_BYPASS_AUTH` is honored **only** when `import.meta.env.DEV === true` AND `host === 'localhost'`. Otherwise, fail closed.
-4. **R2 Uploads & Images**:
+5. **R2 Uploads & Images**:
    - Allowed MIME types: `image/png`, `image/jpeg`, `image/webp`, `image/avif`, `image/gif`.
    - **`image/svg+xml` is strictly forbidden** to prevent stored XSS.
    - Max file size: 5MB. Magic bytes validated.
    - Served with correct `Content-Type` and `X-Content-Type-Options: nosniff`.
-5. **Content Security Policy (CSP)**:
+6. **Content Security Policy (CSP)**:
    - `frame-src` must whitelist Sodiq's own project domains for safe iframe previews.
    - Strict XSS protection via `rehype-sanitize` for rendered Markdown.
-6. **Code Conventions & Placeholders**:
+7. **Code Conventions & Placeholders**:
    - Keep all UI strings in `src/lib/strings.ts` for future Uzbek (`uz`) localization.
    - Mark incomplete copy or data with `TODO(sodiq)`.
+   - Agent runtime instructions are in `AGENTS.md`. Both files cross-reference each other.
    - After each phase: run build, typecheck, lint; test thoroughly; report clear summary.
