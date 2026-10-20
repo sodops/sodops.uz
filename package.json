@@ -12,6 +12,8 @@
     "typecheck": "astro check",
     "test": "npx --yes tsx --test src/lib/*.test.ts",
     "test:e2e": "npx astro preview && npx playwright test && npx astro preview stop",
+    "qa": "node scripts/qa/run-all.mjs",
+    "qa:prod": "node scripts/qa/run-prod.mjs",
     "todos": "node scripts/list-todos.mjs",
     "lint": "eslint .",
     "format": "prettier --write .",
@@ -42,6 +44,7 @@
   },
   "devDependencies": {
     "@astrojs/check": "^0.9.4",
+    "@axe-core/playwright": "^4.14.0",
     "@cloudflare/workers-types": "^5.20261018.1",
     "@playwright/test": "^1.64.1",
     "@types/node": "^22.13.4",
@@ -52,11 +55,5 @@
     "prettier": "^3.5.1",
     "prettier-plugin-astro": "^0.14.1",
     "typescript": "^5.7.3"
-  },
-  "pnpm": {
-    "onlyBuiltDependencies": [
-      "esbuild",
-      "sharp"
-    ]
   }
 }

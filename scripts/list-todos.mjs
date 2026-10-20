@@ -10,6 +10,8 @@ const IGNORED_DIRS = new Set([
   '.mf',
   'test-results',
   'playwright-report',
+  '.lighthouseci',
+  'qa-report',
 ]);
 
 const ALLOWED_EXTS = new Set([
