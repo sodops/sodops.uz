@@ -28,36 +28,40 @@ let nextPostLink: { slug: string; title: string } | null = null;
 
 // 1. Primary: Try to fetch from D1 database
 if (env?.DB) {
-  const d1Post = await getPostBySlug(env.DB, slug);
-  if (d1Post) {
-    postTitle = d1Post.title;
-    postExcerpt = d1Post.excerpt;
-    postPublishedAt = new Date(d1Post.published_at || d1Post.created_at);
-    postReadingTime = d1Post.reading_time_minutes;
-    postTags = d1Post.tags;
-    // Pre-rendered HTML served with < 0.5ms CPU, completely preventing 1102 errors
-    contentHtml = d1Post.content_html;
-    tocHeadings = extractHeadings(d1Post.content).filter(
-      (h) => h.depth === 2 || h.depth === 3
-    );
+  try {
+    const d1Post = await getPostBySlug(env.DB, slug);
+    if (d1Post) {
+      postTitle = d1Post.title;
+      postExcerpt = d1Post.excerpt;
+      postPublishedAt = new Date(d1Post.published_at || d1Post.created_at);
+      postReadingTime = d1Post.reading_time_minutes;
+      postTags = d1Post.tags;
+      // Pre-rendered HTML served with < 0.5ms CPU, completely preventing 1102 errors
+      contentHtml = d1Post.content_html;
+      tocHeadings = extractHeadings(d1Post.content).filter(
+        (h) => h.depth === 2 || h.depth === 3
+      );
 
-    // Prev / Next from D1
-    const allD1Posts = await getPublishedPosts(env.DB);
-    const idx = allD1Posts.findIndex((p) => p.slug === slug);
-    if (idx > -1) {
-      if (idx < allD1Posts.length - 1) {
-        prevPostLink = {
-          slug: allD1Posts[idx + 1].slug,
-          title: allD1Posts[idx + 1].title,
-        };
-      }
-      if (idx > 0) {
-        nextPostLink = {
-          slug: allD1Posts[idx - 1].slug,
-          title: allD1Posts[idx - 1].title,
-        };
+      // Prev / Next from D1
+      const allD1Posts = await getPublishedPosts(env.DB);
+      const idx = allD1Posts.findIndex((p) => p.slug === slug);
+      if (idx > -1) {
+        if (idx < allD1Posts.length - 1) {
+          prevPostLink = {
+            slug: allD1Posts[idx + 1].slug,
+            title: allD1Posts[idx + 1].title,
+          };
+        }
+        if (idx > 0) {
+          nextPostLink = {
+            slug: allD1Posts[idx - 1].slug,
+            title: allD1Posts[idx - 1].title,
+          };
+        }
       }
     }
+  } catch (err) {
+    console.warn(`[Blog Post] D1 fetch for slug '${slug}' failed, using fallback:`, err);
   }
 }
 
@@ -136,6 +140,13 @@ const schemaOrgArticle = {
     tags: postTags,
   }}
 >
+  <!-- Reading Progress Bar -->
+  <div
+    id="reading-progress"
+    class="fixed top-0 left-0 h-0.5 bg-emerald-500 z-50 transition-all duration-75 w-0 pointer-events-none"
+    aria-hidden="true"
+  ></div>
+
   <!-- JSON-LD Structured Data -->
   <script type="application/ld+json" set:html={JSON.stringify(schemaOrgArticle)} />
 
@@ -144,7 +155,7 @@ const schemaOrgArticle = {
     <div>
       <a
         href="/blog"
-        class="inline-flex items-center text-xs font-mono text-neutral-500 dark:text-neutral-400 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors"
+        class="inline-flex items-center text-xs font-mono text-neutral-600 dark:text-neutral-400 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors"
       >
         {strings.blog.backToBlog}
       </a>
@@ -161,7 +172,7 @@ const schemaOrgArticle = {
       </h1>
 
       <div
-        class="flex flex-wrap items-center gap-2 sm:gap-4 text-xs font-mono text-neutral-500 dark:text-neutral-400"
+        class="flex flex-wrap items-center gap-2 sm:gap-4 text-xs font-mono text-neutral-600 dark:text-neutral-400"
       >
         <time datetime={postPublishedAt.toISOString()}>
           {formatDate(postPublishedAt)}
@@ -202,7 +213,7 @@ const schemaOrgArticle = {
               <li class={heading.depth === 3 ? 'pl-3' : ''}>
                 <a
                   href={`#${heading.slug}`}
-                  class="text-neutral-600 dark:text-neutral-400 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors line-clamp-1"
+                  class="py-1 px-1 -mx-1 text-neutral-600 dark:text-neutral-400 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors line-clamp-1 block min-h-[24px]"
                 >
                   {heading.text}
                 </a>

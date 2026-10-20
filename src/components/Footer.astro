@@ -8,7 +8,7 @@ const currentYear = new Date().getFullYear();
   class="w-full mt-auto py-10 border-t border-neutral-200/60 dark:border-neutral-800/60"
 >
   <div
-    class="max-w-[720px] mx-auto px-4 sm:px-6 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-neutral-500 dark:text-neutral-500"
+    class="max-w-[720px] mx-auto px-4 sm:px-6 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-neutral-600 dark:text-neutral-400"
   >
     <div class="flex items-center gap-3">
       <span>{strings.site.author} &copy; {currentYear}</span>
@@ -23,7 +23,7 @@ const currentYear = new Date().getFullYear();
         href="#"
         data-user="me"
         data-domain="sodops.uz"
-        class="hover:text-neutral-800 dark:hover:text-neutral-300 transition-colors"
+        class="hover:text-neutral-900 dark:hover:text-neutral-200 transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-emerald-500 rounded"
       >
         <span class="email-placeholder">me [at] sodops.uz</span>
       </a>
@@ -32,7 +32,7 @@ const currentYear = new Date().getFullYear();
 
       <a
         href="/feed.xml"
-        class="hover:text-neutral-800 dark:hover:text-neutral-300 transition-colors"
+        class="hover:text-neutral-900 dark:hover:text-neutral-200 transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-emerald-500 rounded"
       >
         {strings.nav.rss}
       </a>

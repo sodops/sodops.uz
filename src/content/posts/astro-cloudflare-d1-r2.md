@@ -4,7 +4,7 @@ slug: 'astro-cloudflare-d1-r2'
 published_at: 2026-10-02T14:30:00Z
 excerpt: 'Architecting a fast, serverless publishing site with edge SQLite, asset object storage, and zero cold-start rendering.'
 cover_image: ''
-draft: true
+draft: false
 tags: ['astro', 'cloudflare', 'd1', 'r2', 'devops']
 reading_time_minutes: 6
 ---

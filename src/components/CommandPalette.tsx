@@ -54,6 +54,27 @@ export default function CommandPalette() {
           } catch {}
         },
       },
+      {
+        type: 'page',
+        title: 'Tag: #devops',
+        description: 'Filter posts tagged with #devops',
+        url: '/blog?tag=devops',
+        keywords: 'tag devops infrastructure docker',
+      },
+      {
+        type: 'page',
+        title: 'Tag: #k3s',
+        description: 'Filter posts tagged with #k3s',
+        url: '/blog?tag=k3s',
+        keywords: 'tag k3s kubernetes cluster',
+      },
+      {
+        type: 'page',
+        title: 'Tag: #cloudflare',
+        description: 'Filter posts tagged with #cloudflare',
+        url: '/blog?tag=cloudflare',
+        keywords: 'tag cloudflare workers d1 r2 edge',
+      },
     ],
     [copied]
   );

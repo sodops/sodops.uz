@@ -23,16 +23,20 @@ let posts: Array<{
 
 // 1. Primary: Load published posts from Cloudflare D1
 if (env?.DB) {
-  const d1Posts = await getPublishedPosts(env.DB);
-  if (d1Posts.length > 0) {
-    posts = d1Posts.map((p) => ({
-      slug: p.slug,
-      title: p.title,
-      published_at: new Date(p.published_at || p.created_at),
-      excerpt: p.excerpt,
-      tags: p.tags,
-      reading_time_minutes: p.reading_time_minutes,
-    }));
+  try {
+    const d1Posts = await getPublishedPosts(env.DB);
+    if (d1Posts.length > 0) {
+      posts = d1Posts.map((p) => ({
+        slug: p.slug,
+        title: p.title,
+        published_at: new Date(p.published_at || p.created_at),
+        excerpt: p.excerpt,
+        tags: p.tags,
+        reading_time_minutes: p.reading_time_minutes,
+      }));
+    }
+  } catch (err) {
+    console.warn('[Blog List] D1 query failed, using static collection fallback:', err);
   }
 }
 
@@ -179,7 +183,7 @@ function formatDate(date: Date): string {
                   {post.excerpt}
                 </p>
 
-                <div class="flex items-center gap-3 pt-1 text-[11px] font-mono text-neutral-500 dark:text-neutral-500">
+                <div class="flex items-center gap-3 pt-1 text-[11px] font-mono text-neutral-600 dark:text-neutral-400">
                   <span>
                     {post.reading_time_minutes} {strings.blog.readingTime}
                   </span>

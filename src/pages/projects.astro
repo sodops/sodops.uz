@@ -1,6 +1,6 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro';
-import { getProjectsWithStatus } from '../lib/db';
+import { getProjectsWithStatus, type ProjectWithStatus } from '../lib/db';
 import { strings } from '../lib/strings';
 import { env } from 'cloudflare:workers';
 
@@ -13,7 +13,16 @@ Astro.cache.set({
   tags: ['projects'],
 });
 
-const projects = env?.DB ? await getProjectsWithStatus(env.DB) : [];
+let projects: ProjectWithStatus[] = [];
+let dbError: string | null = null;
+try {
+  if (env?.DB) {
+    projects = await getProjectsWithStatus(env.DB);
+  }
+} catch (err: any) {
+  console.error('[Projects Page] D1 query failed, serving degraded state:', err);
+  dbError = 'Database temporarily unavailable. Live status monitors cannot be refreshed.';
+}
 
 // Compute platform-wide status metrics (exclude paused/disabled projects)
 const activeProjects = projects.filter(
@@ -59,6 +68,13 @@ const avgUptime =
     <section
       class="p-4 sm:p-5 rounded-lg border border-neutral-200/80 dark:border-neutral-800/80 bg-white/50 dark:bg-neutral-900/40 space-y-4"
     >
+      {
+        dbError && (
+          <div class="p-3 rounded bg-amber-500/10 border border-amber-500/30 text-amber-800 dark:text-amber-300 text-xs font-mono">
+            <strong>Warning:</strong> {dbError}
+          </div>
+        )
+      }
       <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div class="flex items-center gap-2.5">
           <span class="relative flex h-3 w-3">
