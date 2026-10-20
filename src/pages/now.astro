@@ -1,0 +1,66 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import { strings } from '../lib/strings';
+
+export const prerender = true;
+
+const lastUpdated = 'October 2026';
+---
+
+<BaseLayout
+  title={strings.now.title}
+  description={strings.now.description}
+>
+  <div class="space-y-8">
+    <header class="space-y-2">
+      <div class="flex items-center justify-between">
+        <h1 class="text-2xl sm:text-3xl font-bold tracking-tight text-neutral-900 dark:text-neutral-100 font-sans">
+          {strings.now.title}
+        </h1>
+        <span class="text-xs font-mono text-neutral-500 dark:text-neutral-400 bg-neutral-100 dark:bg-neutral-800/80 px-2 py-0.5 rounded border border-neutral-200/60 dark:border-neutral-700/60">
+          {strings.now.updated}: {lastUpdated}
+        </span>
+      </div>
+      <p class="text-sm text-neutral-500 dark:text-neutral-400 font-mono">
+        This is a "now page" inspired by Derek Sivers, outlining my current priorities and active projects.
+      </p>
+    </header>
+
+    <div class="space-y-6 text-sm sm:text-base text-neutral-700 dark:text-neutral-300 leading-relaxed font-sans">
+      <section class="space-y-2">
+        <h2 class="text-base font-semibold text-neutral-900 dark:text-neutral-100 font-sans">
+          Location
+        </h2>
+        <p>
+          Living and working in <strong class="text-neutral-900 dark:text-neutral-100">Tashkent, Uzbekistan</strong>.
+        </p>
+      </section>
+
+      <section class="space-y-2">
+        <h2 class="text-base font-semibold text-neutral-900 dark:text-neutral-100 font-sans">
+          Primary Focus
+        </h2>
+        <ul class="list-disc pl-5 space-y-1.5 text-neutral-600 dark:text-neutral-400 text-sm">
+          <li>
+            <strong class="text-neutral-900 dark:text-neutral-200">DevOps & Homelab Engineering:</strong> Managing a personal k3s cluster, automating deployments via GitHub Actions, and refining Prometheus/Grafana dashboards for server monitoring.
+          </li>
+          <li>
+            <strong class="text-neutral-900 dark:text-neutral-200">AI Studies:</strong> Studying applied AI, model evaluation, and autonomous coding agents.
+          </li>
+          <li>
+            <strong class="text-neutral-900 dark:text-neutral-200">Personal Edge Platform:</strong> Building and running <a href="/" class="text-emerald-600 dark:text-emerald-400 hover:underline">sodops.uz</a> on Cloudflare Workers, D1, and R2.
+          </li>
+        </ul>
+      </section>
+
+      <section class="space-y-2">
+        <h2 class="text-base font-semibold text-neutral-900 dark:text-neutral-100 font-sans">
+          What I'm Reading & Exploring
+        </h2>
+        <p class="text-neutral-600 dark:text-neutral-400 text-sm">
+          Deep-diving into distributed system reliability, Linux kernel networking internals, and minimal web architecture.
+        </p>
+      </section>
+    </div>
+  </div>
+</BaseLayout>

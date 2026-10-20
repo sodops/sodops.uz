@@ -7,7 +7,7 @@ export const prerender = false;
 import { env } from 'cloudflare:workers';
 
 export const GET: APIRoute = async () => {
-  const baseUrl = 'https://sodops.uz';
+  const baseUrl = (env?.SITE_URL || 'https://sodops.uz').replace(/\/$/, '');
 
   let postUrls: Array<{ loc: string; lastmod?: string }> = [];
 

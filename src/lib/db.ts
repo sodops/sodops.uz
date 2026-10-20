@@ -515,6 +515,36 @@ export async function getFeaturedProjects(
 }
 
 /**
+ * Retrieves the latest check status for all projects.
+ * Used by status monitoring worker to detect state transitions (up/degraded/down)
+ * so cache tag purges only execute when status actually changes.
+ */
+export async function getLatestStatusPerProject(
+  db?: D1Database
+): Promise<Map<string, 'up' | 'down' | 'degraded'>> {
+  if (!db) return new Map();
+  const query = `
+    SELECT u.project_id, u.status
+    FROM uptime_checks u
+    INNER JOIN (
+      SELECT project_id, MAX(id) as max_id
+      FROM uptime_checks
+      GROUP BY project_id
+    ) latest ON u.id = latest.max_id;
+  `;
+  try {
+    const { results } = await db.prepare(query).all();
+    const map = new Map<string, 'up' | 'down' | 'degraded'>();
+    for (const row of results || []) {
+      map.set(row.project_id as string, row.status as any);
+    }
+    return map;
+  } catch {
+    return new Map();
+  }
+}
+
+/**
  * Records an uptime check for a project in D1 (raw log, retained 7 days).
  */
 export async function recordUptimeCheck(

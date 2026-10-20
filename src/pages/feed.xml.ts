@@ -45,7 +45,7 @@ export const GET: APIRoute = async (context) => {
   return rss({
     title: strings.site.title,
     description: strings.site.description,
-    site: context.site || 'https://sodops.uz',
+    site: (env?.SITE_URL || context.site?.toString() || 'https://sodops.uz').replace(/\/$/, ''),
     items,
     customData: `<language>en-us</language>`,
   });

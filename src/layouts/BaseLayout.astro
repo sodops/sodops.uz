@@ -24,7 +24,8 @@ const {
   article,
 } = Astro.props;
 
-const canonicalURL = new URL(Astro.url.pathname, Astro.site || 'https://sodops.uz');
+const siteBase = (import.meta.env.SITE_URL || Astro.site?.toString() || 'https://sodops.uz').replace(/\/$/, '');
+const canonicalURL = new URL(Astro.url.pathname, siteBase);
 ---
 
 <!doctype html>

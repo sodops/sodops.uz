@@ -9,7 +9,13 @@ export const onRequest = defineMiddleware(async (context, next) => {
   response.headers.set('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
   response.headers.set('X-Frame-Options', 'SAMEORIGIN');
 
-  // 2. Strict Content-Security-Policy:
+  // 2. Strict X-Robots-Tag: noindex for any preview host other than sodops.uz
+  const host = (context.request.headers.get('host') || context.url.host || '').toLowerCase().split(':')[0];
+  if (host && host !== 'sodops.uz') {
+    response.headers.set('X-Robots-Tag', 'noindex, nofollow');
+  }
+
+  // 3. Strict Content-Security-Policy:
   // Public pages strictly enforce `script-src 'self' <hashes>` with ZERO 'unsafe-inline'
   // scripts, allowing only Astro's deterministic island hydrators while preventing stored XSS.
   const isAdmin =
@@ -31,15 +37,15 @@ export const onRequest = defineMiddleware(async (context, next) => {
 
   const scriptSrcDirective = isAdmin
     ? "script-src 'self' 'unsafe-inline'"
-    : `script-src 'self' ${islandHashes.join(' ')}`;
+    : `script-src 'self' https://static.cloudflareinsights.com ${islandHashes.join(' ')}`;
 
   const cspDirectives = [
     "default-src 'self'",
     scriptSrcDirective,
     "style-src 'self' 'unsafe-inline'",
     "img-src 'self' data: https:",
-    "font-src 'self'",
-    "connect-src 'self'",
+    "font-src 'self' data:",
+    "connect-src 'self' https://cloudflareinsights.com",
     "frame-src 'self' https://sodops.uz https://*.sodops.uz",
     "object-src 'none'",
     "base-uri 'self'",

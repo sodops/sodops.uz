@@ -1,0 +1,115 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import { strings } from '../lib/strings';
+
+export const prerender = true;
+
+const categories = [
+  {
+    title: 'Hardware & Workstation',
+    items: [
+      {
+        name: 'Workstation Laptop',
+        description: 'ThinkPad running Linux. Solid keyboard, durable chassis, and dependable hardware support.',
+      },
+      {
+        name: 'Display & Input',
+        description: '27-inch 4K external IPS display with ergonomic mechanical keyboard (linear switches).',
+      },
+    ],
+  },
+  {
+    title: 'Operating System & Terminal',
+    items: [
+      {
+        name: 'Linux (Debian / Ubuntu LTS)',
+        description: 'Clean, lightweight setup without desktop bloat. Window management tailored for productivity.',
+      },
+      {
+        name: 'Terminal & Shell',
+        description: 'Alacritty + zsh with vi mode, starship prompt, and tmux for persistent workspace sessions.',
+      },
+      {
+        name: 'CLI Utilities',
+        description: 'ripgrep, fd, fzf, jq, curl, htop, and bat for rapid local search and pipeline scripting.',
+      },
+    ],
+  },
+  {
+    title: 'DevOps & Homelab Infrastructure',
+    items: [
+      {
+        name: 'Kubernetes (k3s)',
+        description: 'Lightweight Kubernetes cluster running self-hosted applications and telemetry probes.',
+      },
+      {
+        name: 'Containers',
+        description: 'Docker and containerd for reproducible service packaging and local sandboxing.',
+      },
+      {
+        name: 'Observability Stack',
+        description: 'Prometheus for time-series metrics, Grafana for real-time dashboards, and Loki for aggregated logging.',
+      },
+      {
+        name: 'Cloud & Edge Providers',
+        description: 'Cloudflare (Workers, D1, KV, R2, DNS, Access) and DigitalOcean VPS for hosted instances.',
+      },
+    ],
+  },
+  {
+    title: 'Development & Editors',
+    items: [
+      {
+        name: 'Editors',
+        description: 'Neovim with Lua configuration for quick edits; VS Code with vim bindings for complex TypeScript projects.',
+      },
+      {
+        name: 'Languages & Runtimes',
+        description: 'TypeScript, Node.js, Python, Bash scripting, and SQL (SQLite/D1).',
+      },
+      {
+        name: 'Version Control',
+        description: 'Git with signed SSH commits, GitHub Actions for CI/CD automation.',
+      },
+    ],
+  },
+];
+---
+
+<BaseLayout
+  title={strings.uses.title}
+  description={strings.uses.description}
+>
+  <div class="space-y-8">
+    <header class="space-y-2">
+      <h1 class="text-2xl sm:text-3xl font-bold tracking-tight text-neutral-900 dark:text-neutral-100 font-sans">
+        {strings.uses.title}
+      </h1>
+      <p class="text-sm sm:text-base text-neutral-600 dark:text-neutral-400 font-sans">
+        {strings.uses.description}
+      </p>
+    </header>
+
+    <div class="space-y-10 pt-2">
+      {categories.map((category) => (
+        <section class="space-y-4">
+          <h2 class="text-sm font-semibold tracking-wider uppercase text-neutral-500 dark:text-neutral-400 font-mono">
+            {category.title}
+          </h2>
+          <div class="grid grid-cols-1 gap-3">
+            {category.items.map((item) => (
+              <div class="p-4 rounded-lg border border-neutral-200/70 dark:border-neutral-800/70 bg-white/40 dark:bg-neutral-900/30 space-y-1">
+                <div class="text-sm font-medium text-neutral-900 dark:text-neutral-100 font-sans">
+                  {item.name}
+                </div>
+                <div class="text-xs sm:text-sm text-neutral-600 dark:text-neutral-400 leading-relaxed font-sans">
+                  {item.description}
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+      ))}
+    </div>
+  </div>
+</BaseLayout>

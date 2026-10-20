@@ -372,16 +372,46 @@ describe('Minecraft Check Execution: Socket Handshake, Timeouts & Fallback', () 
     assert.equal(meta.players_online, 0);
   });
 
-  it('marks status down when TCP connection fails or times out', async () => {
-    const mockConnect = () => {
-      throw new Error('Connection refused (NXDOMAIN / host down)');
+  it('marks status down and records error reason when TCP connection fails, times out, or hits proxied IP', async () => {
+    // 1. Connection refused
+    const mockRefused = () => {
+      throw new Error('Connection refused (host down)');
     };
+    const resRefused = await pingMinecraftEndpoint('mc.sodops.uz', 25565, 3000, mockRefused as any);
+    assert.equal(resRefused.status, 'down');
+    assert.equal(resRefused.statusCode, 0);
+    assert.ok(resRefused.metadata);
+    const metaRefused = JSON.parse(resRefused.metadata!);
+    assert.equal(metaRefused.error, 'refused');
 
-    const result = await pingMinecraftEndpoint('mc.sodops.uz', 25565, 3000, mockConnect as any);
+    // 2. Cloudflare Anycast IP prohibited (proxied DNS)
+    const mockProxied = () => {
+      throw new Error('Connections to Cloudflare IP ranges are prohibited');
+    };
+    const resProxied = await pingMinecraftEndpoint('mc.sodops.uz', 25565, 3000, mockProxied as any);
+    assert.equal(resProxied.status, 'down');
+    const metaProxied = JSON.parse(resProxied.metadata!);
+    assert.equal(metaProxied.error, 'dns/proxied: connection to Cloudflare IP prohibited');
 
-    assert.equal(result.status, 'down');
-    assert.equal(result.statusCode, 0);
-    assert.equal(result.metadata, null);
+    // 3. Unresolved / NXDOMAIN
+    const mockDns = () => {
+      throw new Error('getaddrinfo ENOTFOUND mc.sodops.uz');
+    };
+    const resDns = await pingMinecraftEndpoint('mc.sodops.uz', 25565, 3000, mockDns as any);
+    assert.equal(resDns.status, 'down');
+    const metaDns = JSON.parse(resDns.metadata!);
+    assert.equal(metaDns.error, 'unresolved/dns');
+
+    // 4. Timeout
+    const mockTimeout = () => {
+      const err = new Error('Minecraft check timed out');
+      err.name = 'AbortError';
+      throw err;
+    };
+    const resTimeout = await pingMinecraftEndpoint('mc.sodops.uz', 25565, 3000, mockTimeout as any);
+    assert.equal(resTimeout.status, 'down');
+    const metaTimeout = JSON.parse(resTimeout.metadata!);
+    assert.equal(metaTimeout.error, 'timeout');
   });
 
   it('correctly tests plain TCP pingEndpoint', async () => {

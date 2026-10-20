@@ -3,6 +3,7 @@ import {
   recordUptimeCheck,
   recordDailyAggregate,
   cleanupOldUptimeChecks,
+  getLatestStatusPerProject,
 } from './db';
 
 export interface StatusCheckResult {
@@ -364,7 +365,12 @@ export async function pingMinecraftEndpoint(
   const start = performance.now();
   const connectFn = await resolveSocketConnect(socketConnectFn);
   if (!connectFn) {
-    return { status: 'down', statusCode: 0, latencyMs: 0, metadata: null };
+    return {
+      status: 'down',
+      statusCode: 0,
+      latencyMs: 0,
+      metadata: JSON.stringify({ error: 'sockets unavailable' }),
+    };
   }
 
   let socket: any = null;
@@ -452,11 +458,32 @@ export async function pingMinecraftEndpoint(
     }
 
     // Connection failed completely (NXDOMAIN, connection refused, or connect timeout)
+    let errorReason = 'connection failed';
+    const msg = (err?.message || '').toLowerCase();
+    if (msg.includes('cloudflare ip') || msg.includes('prohibited')) {
+      errorReason = 'dns/proxied: connection to Cloudflare IP prohibited';
+    } else if (msg.includes('timed out') || msg.includes('timeout') || err?.name === 'AbortError') {
+      errorReason = 'timeout';
+    } else if (msg.includes('refused')) {
+      errorReason = 'refused';
+    } else if (
+      msg.includes('notfound') ||
+      msg.includes('dns') ||
+      msg.includes('nxdomain') ||
+      msg.includes('resolve') ||
+      msg.includes('lookup') ||
+      msg.includes('no such host')
+    ) {
+      errorReason = 'unresolved/dns';
+    } else if (err?.message) {
+      errorReason = err.message.slice(0, 60);
+    }
+
     return {
       status: 'down',
       statusCode: 0,
       latencyMs,
-      metadata: null,
+      metadata: JSON.stringify({ error: errorReason }),
     };
   } finally {
     if (timeoutTimer) clearTimeout(timeoutTimer);
@@ -487,6 +514,9 @@ export async function runStatusChecks(
   if (!projects || projects.length === 0) {
     return [];
   }
+
+  // Fetch previous status of each project to detect transitions
+  const prevStatuses = await getLatestStatusPerProject(env.DB);
 
   const results: StatusCheckResult[] = [];
   const now = new Date().toISOString();
@@ -579,14 +609,26 @@ export async function runStatusChecks(
     console.error('[Status Worker] Failed to cleanup old uptime records:', cleanupErr);
   }
 
-  // Invalidate edge cache tags so public pages see fresh status immediately
-  try {
-    const { cache } = await import('cloudflare:workers');
-    if (cache && typeof cache.purge === 'function') {
-      await cache.purge({ tags: ['projects', 'home'] });
+  // Invalidate edge cache tags ONLY when a project's status CHANGES (up/degraded/down)
+  let statusChanged = false;
+  for (const res of results) {
+    const prev = prevStatuses.get(res.projectId);
+    // If there was a previous status and it differs from the new status, trigger purge
+    if (prev && prev !== res.status) {
+      statusChanged = true;
+      break;
     }
-  } catch {
-    // Expected in local test environment
+  }
+
+  if (statusChanged) {
+    try {
+      const { cache } = await import('cloudflare:workers');
+      if (cache && typeof cache.purge === 'function') {
+        await cache.purge({ tags: ['projects', 'home'] });
+      }
+    } catch {
+      // Expected in local test environment
+    }
   }
 
   return results;

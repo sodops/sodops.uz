@@ -26,10 +26,10 @@ INSERT INTO projects (
 (
   'proj_sodops_uz',
   'sodops.uz',
-  'Personal publishing platform, minimal blog, and edge telemetry monitor built on Astro & Cloudflare Workers.',
+  'TODO(sodiq)',
   'https://sodops.uz',
   'https://github.com/skarimjonoff/sodops.uz',
-  'https://sodops.uz',
+  'https://sodops.uz/api/health',
   '["Astro", "Cloudflare D1", "Tailwind CSS", "TypeScript"]',
   1,
   1,
@@ -41,7 +41,7 @@ INSERT INTO projects (
 (
   'proj_mc_sodops_uz',
   'mc.sodops.uz',
-  'Minecraft server status & web gateway.',
+  'TODO(sodiq)',
   'https://mc.sodops.uz',
   NULL,
   NULL,

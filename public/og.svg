@@ -1,0 +1,42 @@
+<svg width="1200" height="630" viewBox="0 0 1200 630" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Dark Background -->
+  <rect width="1200" height="630" fill="#0a0a0a"/>
+  
+  <!-- Subtle Border Frame -->
+  <rect x="40" y="40" width="1120" height="550" rx="16" stroke="#262626" stroke-width="2"/>
+  
+  <!-- Subtle Decorative Dots Pattern -->
+  <circle cx="1080" cy="90" r="4" fill="#525252"/>
+  <circle cx="1100" cy="90" r="4" fill="#525252"/>
+  <circle cx="1120" cy="90" r="4" fill="#525252"/>
+
+  <!-- Brand Pill -->
+  <rect x="80" y="90" width="160" height="40" rx="8" fill="#171717" stroke="#262626" stroke-width="1.5"/>
+  <text x="100" y="116" font-family="monospace, Courier, sans-serif" font-size="18" font-weight="600" fill="#10b981">~ sodops.uz</text>
+
+  <!-- Main Headline -->
+  <text x="80" y="240" font-family="system-ui, -apple-system, sans-serif" font-size="64" font-weight="700" fill="#f5f5f5" letter-spacing="-1">
+    Sodiq
+  </text>
+  
+  <!-- Tagline -->
+  <text x="80" y="310" font-family="system-ui, -apple-system, sans-serif" font-size="32" font-weight="500" fill="#a3a3a3">
+    DevOps Engineer &amp; AI Student
+  </text>
+  
+  <!-- Description -->
+  <text x="80" y="380" font-family="system-ui, -apple-system, sans-serif" font-size="22" font-weight="400" fill="#737373">
+    Building fast, minimal systems with Kubernetes (k3s), Prometheus, and Cloudflare.
+  </text>
+  <text x="80" y="415" font-family="system-ui, -apple-system, sans-serif" font-size="22" font-weight="400" fill="#737373">
+    Based in Tashkent, Uzbekistan.
+  </text>
+
+  <!-- Bottom Divider -->
+  <line x1="80" y1="475" x2="1120" y2="475" stroke="#262626" stroke-width="1.5"/>
+
+  <!-- Footer Tags -->
+  <text x="80" y="525" font-family="monospace, Courier, sans-serif" font-size="16" fill="#10b981">
+    [k3s]  [Docker]  [Prometheus]  [Loki]  [Cloudflare Workers]  [D1]
+  </text>
+</svg>

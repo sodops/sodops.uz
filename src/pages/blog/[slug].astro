@@ -108,7 +108,8 @@ function formatDate(date: Date): string {
   return date.toISOString().split('T')[0];
 }
 
-const postUrl = new URL(Astro.url.pathname, Astro.site || 'https://sodops.uz').toString();
+const siteBase = (import.meta.env.SITE_URL || Astro.site?.toString() || 'https://sodops.uz').replace(/\/$/, '');
+const postUrl = new URL(Astro.url.pathname, siteBase).toString();
 
 // JSON-LD structured data for BlogPosting
 const schemaOrgArticle = {
@@ -121,7 +122,7 @@ const schemaOrgArticle = {
   author: {
     '@type': 'Person',
     name: strings.site.author,
-    url: 'https://sodops.uz',
+    url: siteBase,
   },
   keywords: postTags.join(', '),
 };
