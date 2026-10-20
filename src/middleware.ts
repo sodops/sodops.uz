@@ -37,6 +37,11 @@ export const onRequest = defineMiddleware(async (context, next) => {
 
     if (!auth.authenticated) {
       const statusCode = auth.statusCode || 401;
+      const statusText = statusCode === 403 ? 'Forbidden' : 'Unauthorized';
+
+      // Log specific diagnostic reason to Workers logs, never leak internal details to clients
+      console.warn(`[Admin Auth Guard] ${statusCode} ${statusText}: ${auth.error}`);
+
       const headers = new Headers();
       headers.set('X-Content-Type-Options', 'nosniff');
       headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
@@ -60,19 +65,18 @@ export const onRequest = defineMiddleware(async (context, next) => {
       if (isJsonRequest) {
         headers.set('Content-Type', 'application/json; charset=utf-8');
         return new Response(
-          JSON.stringify({ error: auth.error || 'Unauthorized' }),
+          JSON.stringify({ error: statusText }),
           { status: statusCode, headers }
         );
       }
 
       headers.set('Content-Type', 'text/html; charset=utf-8');
-      const title = statusCode === 403 ? '403 Forbidden' : '401 Unauthorized';
       const html = `<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>${statusCode} ${title}</title>
+  <title>${statusCode} ${statusText}</title>
   <style>
     body { font-family: ui-sans-serif, system-ui, sans-serif; background: #0a0a0a; color: #f5f5f5; display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; padding: 1.5rem; }
     .card { max-width: 28rem; width: 100%; border: 1px solid #262626; border-radius: 0.75rem; padding: 2rem; background: #171717; text-align: center; }
@@ -84,8 +88,8 @@ export const onRequest = defineMiddleware(async (context, next) => {
 </head>
 <body>
   <div class="card">
-    <h1>${statusCode} ${title}</h1>
-    <p>${auth.error || 'Authentication required.'}</p>
+    <h1>${statusCode} ${statusText}</h1>
+    <p>${statusText}</p>
     <a href="/">&larr; Return to sodops.uz</a>
   </div>
 </body>

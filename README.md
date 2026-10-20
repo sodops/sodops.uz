@@ -32,7 +32,7 @@ npx wrangler dev      # Local Cloudflare emulation (D1, KV, R2, crons)
 # Code Quality & Tests
 pnpm typecheck        # astro check (TypeScript & Astro types)
 pnpm lint             # ESLint
-pnpm test             # Run 73 unit tests (auth, db, markdown, search, status, minecraft, upload)
+pnpm test             # Run unit tests (auth, db, markdown, search, status, minecraft, upload)
 pnpm test:e2e         # Playwright real-browser tests against headless Chromium
 pnpm todos            # List all TODO(sodiq) content placeholders
 
@@ -102,3 +102,38 @@ The following features were intentionally deferred to maintain strict edge CPU b
 2. **ZIP Bulk Archive Export & Import**: Single-click archive ZIP packaging of all posts and uploaded media from `/admin` is deferred to a future maintenance milestone.
 3. **Third-Party Monitoring Allowlist**: Monitoring targets are strictly restricted to `sodops.uz` and its verified subdomains. Third-party HTTP/TCP endpoints are deferred to avoid edge SSRF concerns.
 4. **Phase 7 3D Visualizations**: Three.js / WebGL canvas interactive components are deferred to preserve the lightweight, zero-bloat, text-first reading experience.
+
+---
+
+## 7. Cloudflare Access Configuration & Troubleshooting
+
+### One Application, Multiple Destinations
+Configure **exactly ONE** Self-hosted Access Application in Cloudflare Zero Trust to protect all administrative routes across environments:
+- **Application Type**: Self-hosted
+- **Application Name**: `sodops-admin`
+- **Application Domain / Destinations**:
+  1. Domain: `sodops.uz`, Path: `admin*`
+  2. Domain: `preview.sodops.uz`, Path: `admin*`
+- **Session Duration**: 24 hours (or per operational policy)
+
+> [!IMPORTANT]
+> Never create separate Access applications for production and preview if they share the same codebase secrets. Using one application ensures a single Application Audience (`CF_ACCESS_AUD`) tag covers both environments.
+
+### How to Retrieve the Application Audience (AUD) Tag
+1. Log into the [Cloudflare Zero Trust Dashboard](https://one.dash.cloudflare.com/).
+2. Navigate to **Access** -> **Applications**.
+3. Select your admin application (`sodops-admin`) and click **Edit**.
+4. In the **Overview** tab, find the **Application Audience (AUD)** tag (a 64-character hexadecimal string).
+5. Provision this value as a Worker secret:
+   ```bash
+   npx wrangler secret put CF_ACCESS_AUD
+   ```
+
+### Common Errors & Diagnostics
+
+| Error / Symptom | Root Cause | Resolution |
+| :--- | :--- | :--- |
+| **Whole-domain 302 redirect on public pages (`/`, `/api/health`, `/blog`)** | The Access Application destination was created with Domain: `sodops.uz` but Path was left blank or set to `*`. This places Zero Trust authentication in front of the entire website. | Edit the Access Application destination. Set Domain to `sodops.uz` and explicitly set Path to `admin*`. Public visitors and cron health checks must never hit an Access login redirect. |
+| **`401 Unauthorized` (Audience mismatch)** | The Worker's `CF_ACCESS_AUD` secret does not match the `aud` claim in the incoming `Cf-Access-Jwt-Assertion` token. Workers Logs will log `[Admin Auth Guard] 401 Unauthorized: Audience mismatch: expected ... got ...`. | Verify the AUD tag in Cloudflare Zero Trust -> Access -> Applications -> Edit -> Overview, then run `npx wrangler secret put CF_ACCESS_AUD` to update the secret. |
+| **`403 Forbidden` (Unauthorized email)** | The user passed Cloudflare Access authentication, but the email in their JWT payload is not present in the Worker's `ADMIN_EMAILS` secret list. Workers Logs will log `[Admin Auth Guard] 403 Forbidden: Unauthorized email address: user@example.com`. | Update the `ADMIN_EMAILS` secret with a comma-separated list of authorized email addresses: `npx wrangler secret put ADMIN_EMAILS`. |
+| **`401 Unauthorized` (Missing token or misconfigured team domain)** | Request reached `/admin` without going through Cloudflare Access, or `CF_ACCESS_TEAM_DOMAIN` secret/env is missing or invalid. Workers Logs will log `[Admin Auth Guard] 401 Unauthorized: Missing Cf-Access-Jwt-Assertion header` or `CF_ACCESS_TEAM_DOMAIN is required`. | Ensure access is routed through the Access domain, and verify `CF_ACCESS_TEAM_DOMAIN` is set to `sodops.cloudflareaccess.com` in `wrangler.jsonc` or secrets. |

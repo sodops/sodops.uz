@@ -18,8 +18,13 @@ describe('Status Monitoring: evaluateEndpointStatus', () => {
   it('identifies healthy 200 responses under 2500ms as up', () => {
     assert.equal(evaluateEndpointStatus(200, 120), 'up');
     assert.equal(evaluateEndpointStatus(204, 50), 'up');
-    assert.equal(evaluateEndpointStatus(301, 80), 'up');
-    assert.equal(evaluateEndpointStatus(302, 2400), 'up');
+  });
+
+  it('identifies 3xx redirects as down (redirects must never be treated as up)', () => {
+    assert.equal(evaluateEndpointStatus(301, 80), 'down');
+    assert.equal(evaluateEndpointStatus(302, 2400), 'down');
+    assert.equal(evaluateEndpointStatus(307, 100), 'down');
+    assert.equal(evaluateEndpointStatus(308, 100), 'down');
   });
 
   it('identifies slow responses (>= 2500ms) as degraded', () => {
@@ -138,6 +143,130 @@ describe('Status Monitoring: pingProjectEndpoint (HTTP)', () => {
 
     assert.equal(result.status, 'down');
     assert.equal(result.statusCode, 504);
+  });
+
+  it('uses redirect manual and treats 3xx redirects as down with error redirect', async () => {
+    let capturedOptions: any = null;
+    const mockFetch = async (_url: string, opts: any) => {
+      capturedOptions = opts;
+      return new Response(null, {
+        status: 302,
+        headers: { Location: 'https://sodops.cloudflareaccess.com/login' },
+      });
+    };
+
+    const result = await pingProjectEndpoint(
+      'https://sodops.uz/api/health',
+      2000,
+      mockFetch as any
+    );
+
+    assert.equal(capturedOptions?.redirect, 'manual');
+    assert.equal(result.status, 'down');
+    assert.equal(result.statusCode, 302);
+    assert.ok(result.metadata);
+    const meta = JSON.parse(result.metadata!);
+    assert.equal(meta.error, 'redirect');
+    assert.equal(meta.location, 'https://sodops.cloudflareaccess.com/login');
+  });
+
+  it('validates /api/health returns up when status is 200 and body is exactly {"ok":true}', async () => {
+    const mockFetch = async () =>
+      new Response(JSON.stringify({ ok: true }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      });
+
+    const result = await pingProjectEndpoint(
+      'https://sodops.uz/api/health',
+      2000,
+      mockFetch as any
+    );
+
+    assert.equal(result.status, 'up');
+    assert.equal(result.statusCode, 200);
+    assert.equal(result.metadata, null);
+  });
+
+  it('strictly rejects /api/health returning HTML SSO page with status 200 as down', async () => {
+    const mockFetch = async () =>
+      new Response('<!DOCTYPE html><html><body>Login to Cloudflare Access</body></html>', {
+        status: 200,
+        headers: { 'Content-Type': 'text/html' },
+      });
+
+    const result = await pingProjectEndpoint(
+      'https://sodops.uz/api/health',
+      2000,
+      mockFetch as any
+    );
+
+    assert.equal(result.status, 'down');
+    assert.equal(result.statusCode, 200);
+    assert.ok(result.metadata);
+    const meta = JSON.parse(result.metadata!);
+    assert.equal(meta.error, 'invalid_health_payload');
+  });
+
+  it('strictly rejects /api/health returning JSON with ok: false as down', async () => {
+    const mockFetch = async () =>
+      new Response(JSON.stringify({ ok: false }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      });
+
+    const result = await pingProjectEndpoint(
+      'https://sodops.uz/api/health',
+      2000,
+      mockFetch as any
+    );
+
+    assert.equal(result.status, 'down');
+    assert.equal(result.statusCode, 200);
+    assert.ok(result.metadata);
+    const meta = JSON.parse(result.metadata!);
+    assert.equal(meta.error, 'invalid_health_payload');
+  });
+
+  it('strictly rejects /api/health returning unexpected JSON structure as down', async () => {
+    const mockFetch = async () =>
+      new Response(JSON.stringify({ ok: true, extra: 'forbidden' }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      });
+
+    const result = await pingProjectEndpoint(
+      'https://sodops.uz/api/health',
+      2000,
+      mockFetch as any
+    );
+
+    assert.equal(result.status, 'down');
+    assert.equal(result.statusCode, 200);
+    assert.ok(result.metadata);
+    const meta = JSON.parse(result.metadata!);
+    assert.equal(meta.error, 'invalid_health_payload');
+  });
+
+  it('treats 301/307 redirects on generic endpoints as down with error redirect', async () => {
+    const mockFetch = async () =>
+      new Response(null, {
+        status: 301,
+        headers: { Location: 'https://sodops.uz/new-home' },
+      });
+
+    const result = await pingProjectEndpoint(
+      'https://sodops.uz/old-home',
+      2000,
+      mockFetch as any
+    );
+
+    assert.equal(result.status, 'down');
+    assert.equal(result.statusCode, 301);
+    assert.ok(result.metadata);
+    const meta = JSON.parse(result.metadata!);
+    assert.equal(meta.error, 'redirect');
+    assert.equal(meta.location, 'https://sodops.uz/new-home');
   });
 });
 

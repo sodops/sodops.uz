@@ -89,7 +89,7 @@ export function evaluateEndpointStatus(
   statusCode: number,
   latencyMs: number
 ): 'up' | 'down' | 'degraded' {
-  if (statusCode >= 200 && statusCode < 400) {
+  if (statusCode >= 200 && statusCode < 300) {
     return latencyMs >= 2500 ? 'degraded' : 'up';
   }
   if (statusCode === 429) {
@@ -109,14 +109,21 @@ export function computeUptimePercentage(checks: Array<{ status: string }>): numb
 }
 
 /**
- * Pings an HTTP endpoint and returns status, status code, and latency in ms.
+ * Pings an HTTP endpoint and returns status, status code, latency in ms, and optional metadata.
+ * Uses redirect: 'manual' to prevent following redirects to login/SSO pages.
+ * Strictly verifies /api/health returns HTTP 200 and JSON body exactly {"ok":true}.
  * Uses AbortSignal with timeout to prevent hanging requests.
  */
 export async function pingProjectEndpoint(
   url: string,
   timeoutMs = 4000,
   fetchFn: typeof fetch = fetch
-): Promise<{ status: 'up' | 'down' | 'degraded'; statusCode: number; latencyMs: number }> {
+): Promise<{
+  status: 'up' | 'down' | 'degraded';
+  statusCode: number;
+  latencyMs: number;
+  metadata?: string | null;
+}> {
   const start = performance.now();
   try {
     const controller = new AbortController();
@@ -124,21 +131,120 @@ export async function pingProjectEndpoint(
 
     const res = await fetchFn(url, {
       method: 'GET',
+      redirect: 'manual',
       headers: {
         'User-Agent': 'sodops-status-monitor/1.0 (+https://sodops.uz)',
-        Accept: '*/*',
+        Accept: 'application/json, text/plain, */*',
       },
       signal: controller.signal,
     });
     clearTimeout(timer);
 
     const latencyMs = Math.round(performance.now() - start);
+
+    // Treat any 3xx redirect or opaqueredirect as NOT up (down with reason "redirect")
+    const isRedirect =
+      (res.status >= 300 && res.status < 400) ||
+      res.type === 'opaqueredirect';
+
+    if (isRedirect) {
+      const location = res.headers?.get ? res.headers.get('location') : null;
+      return {
+        status: 'down',
+        statusCode: res.status || 302,
+        latencyMs,
+        metadata: JSON.stringify({
+          error: 'redirect',
+          ...(location ? { location } : {}),
+        }),
+      };
+    }
+
+    // Strict validation for /api/health probes
+    const isHealthEndpoint = (() => {
+      try {
+        const parsed = new URL(url);
+        return parsed.pathname === '/api/health' || parsed.pathname.endsWith('/api/health');
+      } catch {
+        return url.includes('/api/health');
+      }
+    })();
+
+    if (isHealthEndpoint) {
+      if (res.status !== 200) {
+        return {
+          status: 'down',
+          statusCode: res.status,
+          latencyMs,
+          metadata: JSON.stringify({
+            error: `health check failed with status ${res.status}`,
+          }),
+        };
+      }
+
+      // JSON body must be exactly {"ok":true}
+      try {
+        const bodyText = await res.text();
+        let parsedJson: any;
+        try {
+          parsedJson = JSON.parse(bodyText);
+        } catch {
+          return {
+            status: 'down',
+            statusCode: res.status,
+            latencyMs,
+            metadata: JSON.stringify({
+              error: 'invalid_health_payload',
+              details: 'Response is not valid JSON',
+            }),
+          };
+        }
+
+        const isExactOk =
+          parsedJson !== null &&
+          typeof parsedJson === 'object' &&
+          !Array.isArray(parsedJson) &&
+          Object.keys(parsedJson).length === 1 &&
+          parsedJson.ok === true;
+
+        if (!isExactOk) {
+          return {
+            status: 'down',
+            statusCode: res.status,
+            latencyMs,
+            metadata: JSON.stringify({
+              error: 'invalid_health_payload',
+              details: 'Expected exactly {"ok":true}',
+            }),
+          };
+        }
+
+        return {
+          status: latencyMs >= 2500 ? 'degraded' : 'up',
+          statusCode: 200,
+          latencyMs,
+          metadata: null,
+        };
+      } catch (err: any) {
+        return {
+          status: 'down',
+          statusCode: res.status,
+          latencyMs,
+          metadata: JSON.stringify({
+            error: 'invalid_health_payload',
+            details: err?.message || 'Failed reading response body',
+          }),
+        };
+      }
+    }
+
     const status = evaluateEndpointStatus(res.status, latencyMs);
 
     return {
       status,
       statusCode: res.status,
       latencyMs,
+      metadata: null,
     };
   } catch (err: any) {
     const latencyMs = Math.round(performance.now() - start);
@@ -147,6 +253,9 @@ export async function pingProjectEndpoint(
       status: 'down',
       statusCode: isTimeout ? 504 : 0,
       latencyMs,
+      metadata: JSON.stringify({
+        error: isTimeout ? 'timeout' : (err?.message || 'network_error'),
+      }),
     };
   }
 }

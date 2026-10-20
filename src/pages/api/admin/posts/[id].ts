@@ -18,7 +18,8 @@ export const GET: APIRoute = async ({ params, request, locals }) => {
   });
 
   if (!auth.authenticated) {
-    return new Response(JSON.stringify({ error: auth.error || 'Unauthorized' }), {
+    console.warn(`[Admin API Guard] ${auth.statusCode || 401}: ${auth.error}`);
+    return new Response(JSON.stringify({ error: auth.statusCode === 403 ? 'Forbidden' : 'Unauthorized' }), {
       status: auth.statusCode || 401,
       headers: { 'Content-Type': 'application/json' },
     });
@@ -57,7 +58,8 @@ export const PUT: APIRoute = async ({ params, request, locals }) => {
   });
 
   if (!auth.authenticated) {
-    return new Response(JSON.stringify({ error: auth.error || 'Unauthorized' }), {
+    console.warn(`[Admin API Guard] ${auth.statusCode || 401}: ${auth.error}`);
+    return new Response(JSON.stringify({ error: auth.statusCode === 403 ? 'Forbidden' : 'Unauthorized' }), {
       status: auth.statusCode || 401,
       headers: { 'Content-Type': 'application/json' },
     });
@@ -144,7 +146,8 @@ export const DELETE: APIRoute = async ({ params, request, locals }) => {
   });
 
   if (!auth.authenticated) {
-    return new Response(JSON.stringify({ error: auth.error || 'Unauthorized' }), {
+    console.warn(`[Admin API Guard] ${auth.statusCode || 401}: ${auth.error}`);
+    return new Response(JSON.stringify({ error: auth.statusCode === 403 ? 'Forbidden' : 'Unauthorized' }), {
       status: auth.statusCode || 401,
       headers: { 'Content-Type': 'application/json' },
     });

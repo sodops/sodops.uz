@@ -18,7 +18,8 @@ export const POST: APIRoute = async ({ request, locals }) => {
   });
 
   if (!auth.authenticated) {
-    return new Response(JSON.stringify({ error: auth.error || 'Unauthorized' }), {
+    console.warn(`[Admin API Guard] ${auth.statusCode || 401}: ${auth.error}`);
+    return new Response(JSON.stringify({ error: auth.statusCode === 403 ? 'Forbidden' : 'Unauthorized' }), {
       status: auth.statusCode || 401,
       headers: { 'Content-Type': 'application/json' },
     });

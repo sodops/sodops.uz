@@ -38,8 +38,7 @@ const initialPosts = isAuthenticated && env.DB ? await getAllPosts(env.DB) : [];
           Cloudflare Access Authentication Required
         </h1>
         <p class="text-sm text-neutral-600 dark:text-neutral-400 max-w-md mx-auto">
-          {auth.error ||
-            'Access to this route requires verified Cloudflare Access credentials.'}
+          Access to this route requires verified Cloudflare Access credentials.
         </p>
         <div class="pt-4">
           <a
