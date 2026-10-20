@@ -20,6 +20,7 @@ export default function CommandPalette() {
 
   const inputRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
+  const lastFocusedRef = useRef<HTMLElement | null>(null);
 
   // Default core actions
   const defaultActions: SearchItem[] = useMemo(
@@ -79,14 +80,22 @@ export default function CommandPalette() {
     const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
         e.preventDefault();
-        setIsOpen((prev) => !prev);
+        setIsOpen((prev) => {
+          if (!prev) {
+            lastFocusedRef.current = document.activeElement as HTMLElement | null;
+          }
+          return !prev;
+        });
       } else if (e.key === 'Escape' && isOpen) {
         e.preventDefault();
         setIsOpen(false);
       }
     };
 
-    const handleCustomOpen = () => setIsOpen(true);
+    const handleCustomOpen = () => {
+      lastFocusedRef.current = document.activeElement as HTMLElement | null;
+      setIsOpen(true);
+    };
 
     window.addEventListener('keydown', handleKeyDown);
     window.addEventListener('open-command-palette', handleCustomOpen);
@@ -97,12 +106,14 @@ export default function CommandPalette() {
     };
   }, [isOpen]);
 
-  // Focus input on open
+  // Focus input on open, and restore focus on close
   useEffect(() => {
     if (isOpen) {
       setQuery('');
       setSelectedIndex(0);
       setTimeout(() => inputRef.current?.focus(), 50);
+    } else if (lastFocusedRef.current) {
+      lastFocusedRef.current.focus();
     }
   }, [isOpen]);
 
@@ -125,8 +136,13 @@ export default function CommandPalette() {
     setSelectedIndex(0);
   }, [query]);
 
-  // Keyboard navigation within list
+  // Keyboard navigation within list & focus trap
   const handleInputKeyDown = (e: KeyboardEvent) => {
+    if (e.key === 'Tab') {
+      e.preventDefault(); // Trap focus inside search input
+      return;
+    }
+
     if (filteredItems.length === 0) return;
 
     if (e.key === 'ArrowDown') {
@@ -152,13 +168,17 @@ export default function CommandPalette() {
   // Scroll active item into view
   useEffect(() => {
     if (!listRef.current) return;
-    const activeEl = listRef.current.children[selectedIndex] as HTMLElement;
+    const activeEl = listRef.current.querySelector(`[data-index="${selectedIndex}"]`) as HTMLElement;
     if (activeEl) {
       activeEl.scrollIntoView({ block: 'nearest' });
     }
   }, [selectedIndex]);
 
   if (!isOpen) return null;
+
+  const activeItemId = filteredItems[selectedIndex]
+    ? `palette-option-${selectedIndex}`
+    : undefined;
 
   return (
     <div
@@ -180,6 +200,7 @@ export default function CommandPalette() {
             stroke="currentColor"
             viewBox="0 0 24 24"
             stroke-width="2"
+            aria-hidden="true"
           >
             <path
               stroke-linecap="round"
@@ -190,6 +211,11 @@ export default function CommandPalette() {
           <input
             ref={inputRef}
             type="text"
+            role="combobox"
+            aria-expanded={isOpen}
+            aria-controls="command-palette-results"
+            aria-autocomplete="list"
+            aria-activedescendant={activeItemId}
             value={query}
             onInput={(e: Event) => setQuery((e.target as HTMLInputElement).value)}
             onKeyDown={handleInputKeyDown}
@@ -200,7 +226,7 @@ export default function CommandPalette() {
             <button
               type="button"
               onClick={() => setQuery('')}
-              class="text-xs text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-300"
+              class="text-xs text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-300 cursor-pointer"
               aria-label="Clear query"
             >
               Clear
@@ -212,7 +238,13 @@ export default function CommandPalette() {
         </div>
 
         {/* Results List */}
-        <div ref={listRef} class="flex-1 overflow-y-auto p-2 space-y-1">
+        <div
+          ref={listRef}
+          id="command-palette-results"
+          role="listbox"
+          aria-label="Search suggestions"
+          class="flex-1 overflow-y-auto p-2 space-y-1"
+        >
           {isLoading && searchItems.length === 0 ? (
             <div class="py-10 text-center text-xs font-mono text-neutral-400 dark:text-neutral-500">
               Loading search index...
@@ -227,6 +259,10 @@ export default function CommandPalette() {
               return (
                 <div
                   key={`${item.type}-${item.title}-${index}`}
+                  id={`palette-option-${index}`}
+                  data-index={index}
+                  role="option"
+                  aria-selected={isSelected}
                   onClick={() => {
                     if (item.action) {
                       item.action();

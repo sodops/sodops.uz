@@ -3,7 +3,7 @@ import BaseLayout from '../../layouts/BaseLayout.astro';
 import { getCollection, render } from 'astro:content';
 import { strings } from '../../lib/strings';
 import { getPostBySlug, getPublishedPosts } from '../../lib/db';
-import { extractHeadings } from '../../lib/markdown';
+import { extractHeadings } from '../../lib/markdown-utils';
 
 // Required: On-demand rendering with Cloudflare edge caching
 export const prerender = false;

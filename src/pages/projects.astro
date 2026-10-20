@@ -272,25 +272,30 @@ const avgUptime =
                 ) : project.has_history ? (
                   <>
                     <div class="flex items-center gap-[3px] h-6 w-full" aria-label="30-day uptime bars">
-                      {project.uptime_history_30d.map((day) => (
-                        <div
-                          class:list={[
-                            'flex-1 h-full rounded-[2px] transition-transform hover:scale-y-125 cursor-pointer',
-                            day.status === 'up'
-                              ? 'bg-emerald-500/80 hover:bg-emerald-400'
-                              : day.status === 'degraded'
-                                ? 'bg-amber-500/80 hover:bg-amber-400'
-                                : day.status === 'down'
-                                  ? 'bg-red-500/80 hover:bg-red-400'
-                                  : 'bg-neutral-200/50 dark:bg-neutral-800/50',
-                          ]}
-                          title={
-                            day.status === 'none'
-                              ? `${day.date}: No checks recorded`
-                              : `${day.date}: ${day.status.toUpperCase()} (${day.percent}% available${day.avgLatency !== undefined ? `, avg ${day.avgLatency}ms` : ''})`
-                          }
-                        />
-                      ))}
+                      {project.uptime_history_30d.map((day) => {
+                        const dayLabel =
+                          day.status === 'none'
+                            ? `${day.date}: No checks recorded`
+                            : `${day.date}: ${day.status.toUpperCase()} (${day.percent}% available${day.avgLatency !== undefined ? `, avg ${day.avgLatency}ms` : ''})`;
+                        return (
+                          <div
+                            role="img"
+                            tabindex="0"
+                            aria-label={dayLabel}
+                            title={dayLabel}
+                            class:list={[
+                              'flex-1 h-full rounded-[2px] transition-transform hover:scale-y-125 focus:scale-y-125 focus:outline-none focus:ring-1 focus:ring-emerald-400 cursor-pointer',
+                              day.status === 'up'
+                                ? 'bg-emerald-500/80 hover:bg-emerald-400'
+                                : day.status === 'degraded'
+                                  ? 'bg-amber-500/80 hover:bg-amber-400'
+                                  : day.status === 'down'
+                                    ? 'bg-red-500/80 hover:bg-red-400'
+                                    : 'bg-neutral-200/50 dark:bg-neutral-800/50',
+                            ]}
+                          />
+                        );
+                      })}
                     </div>
 
                     <div class="flex items-center justify-between text-[10px] font-mono text-neutral-600 dark:text-neutral-400">

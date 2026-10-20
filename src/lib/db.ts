@@ -1,8 +1,4 @@
-import {
-  renderAndSanitizeMarkdown,
-  sanitizeHtml,
-  calculateReadingTimeMinutes,
-} from './markdown';
+import { calculateReadingTimeMinutes } from './markdown-utils';
 
 type D1Database = import('@cloudflare/workers-types').D1Database;
 
@@ -189,7 +185,9 @@ export async function savePost(
   const publishedAt = data.published_at || (published ? now : '');
   const readingTime = calculateReadingTimeMinutes(content);
 
-  // Pre-render content_html: if already pre-rendered (e.g. import), sanitize directly without full re-compilation
+  // Pre-render content_html: if already pre-rendered (e.g. import), sanitize directly without full re-compilation.
+  // Dynamic lazy import isolates the heavy unified/highlight.js pipeline to admin writes only.
+  const { renderAndSanitizeMarkdown, sanitizeHtml } = await import('./markdown');
   const contentHtml = data.content_html
     ? await sanitizeHtml(data.content_html)
     : await renderAndSanitizeMarkdown(content);

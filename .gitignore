@@ -32,4 +32,8 @@ pnpm-debug.log*
 test-results/
 playwright-report/
 
+# QA
+qa-report/
+.lighthouseci/
+
 backup-*.sql
