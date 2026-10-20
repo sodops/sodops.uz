@@ -4,7 +4,9 @@
 export interface AuthContext {
   isDev: boolean;
   host: string | null;
-  jwtAssertion: string | null;
+  jwtAssertion?: string | null;
+  cookieHeader?: string | null;
+  headers?: Headers | null;
   adminEmails?: string | string[];
   adminEmail?: string;
   expectedAud?: string;
@@ -138,6 +140,46 @@ export function parseAllowedEmails(
 }
 
 /**
+ * Extracts the Cloudflare Access JWT assertion from either:
+ * 1. The `Cf-Access-Jwt-Assertion` request header (injected by Cloudflare Access proxy).
+ * 2. The `CF_Authorization` cookie (set by Cloudflare Access on client browser sessions).
+ */
+export function extractAccessJwt(
+  requestOrHeaders?: Request | Headers | { headers?: Headers } | null
+): string | null {
+  if (!requestOrHeaders) return null;
+
+  const headers: Headers | null =
+    'headers' in requestOrHeaders && requestOrHeaders.headers instanceof Headers
+      ? requestOrHeaders.headers
+      : requestOrHeaders instanceof Headers
+        ? requestOrHeaders
+        : null;
+
+  if (!headers) return null;
+
+  const header = headers.get('Cf-Access-Jwt-Assertion');
+  if (header && header.trim() !== '') {
+    return header.trim();
+  }
+
+  const cookieHeader = headers.get('cookie') || headers.get('Cookie');
+  if (cookieHeader) {
+    const match = cookieHeader.match(/(?:^|;\s*)CF_Authorization=([^;]+)/);
+    if (match && match[1]) {
+      const raw = match[1].replace(/^"|"$/g, '').trim();
+      try {
+        return decodeURIComponent(raw);
+      } catch {
+        return raw;
+      }
+    }
+  }
+
+  return null;
+}
+
+/**
  * Fetches and imports the Cloudflare Access public key from JWKS (/cdn-cgi/access/certs).
  */
 export async function getAccessPublicKey(
@@ -198,6 +240,8 @@ export async function authenticateAdminRequest(
     isDev,
     host,
     jwtAssertion,
+    cookieHeader,
+    headers,
     adminEmails,
     adminEmail,
     devBypassAuth,
@@ -250,18 +294,34 @@ export async function authenticateAdminRequest(
     };
   }
 
-  // 4. Production: Enforce presence of Cf-Access-Jwt-Assertion header
-  if (!jwtAssertion || jwtAssertion.trim() === '') {
+  // 4. Production: Enforce presence of Cf-Access-Jwt-Assertion header or CF_Authorization cookie
+  let token = jwtAssertion;
+  if (!token && headers) {
+    token = extractAccessJwt(headers);
+  }
+  if (!token && cookieHeader) {
+    const match = cookieHeader.match(/(?:^|;\s*)CF_Authorization=([^;]+)/);
+    if (match && match[1]) {
+      const raw = match[1].replace(/^"|"$/g, '').trim();
+      try {
+        token = decodeURIComponent(raw);
+      } catch {
+        token = raw;
+      }
+    }
+  }
+
+  if (!token || token.trim() === '') {
     return {
       authenticated: false,
       statusCode: 401,
-      error: 'Missing Cf-Access-Jwt-Assertion header',
+      error: 'Missing Cf-Access-Jwt-Assertion header or CF_Authorization cookie',
     };
   }
 
   try {
     // Basic JWT structure check (header.payload.signature)
-    const parts = jwtAssertion.split('.');
+    const parts = token.split('.');
     if (parts.length !== 3) {
       return {
         authenticated: false,

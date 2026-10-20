@@ -1,6 +1,11 @@
 import { defineMiddleware } from 'astro:middleware';
 import { env } from 'cloudflare:workers';
-import { authenticateAdminRequest, isAdminPath, normalizeAdminPath } from './lib/auth';
+import {
+  authenticateAdminRequest,
+  extractAccessJwt,
+  isAdminPath,
+  normalizeAdminPath,
+} from './lib/auth';
 
 export const onRequest = defineMiddleware(async (context, next) => {
   const normalizedPath = normalizeAdminPath(context.url.pathname);
@@ -25,10 +30,12 @@ export const onRequest = defineMiddleware(async (context, next) => {
       workerEnv.DEV_BYPASS_AUTH === 'true' ||
       import.meta.env.DEV;
 
+    const jwtAssertion = extractAccessJwt(context.request.headers);
+
     const auth = await authenticateAdminRequest({
       isDev: import.meta.env.DEV,
       host: context.request.headers.get('host'),
-      jwtAssertion: context.request.headers.get('Cf-Access-Jwt-Assertion'),
+      jwtAssertion,
       adminEmails,
       expectedAud,
       teamDomain,
@@ -60,6 +67,7 @@ export const onRequest = defineMiddleware(async (context, next) => {
 
       const isJsonRequest =
         normalizedPath.startsWith('/api/') ||
+        normalizedPath.startsWith('/admin/api/') ||
         context.request.headers.get('accept')?.includes('application/json');
 
       if (isJsonRequest) {

@@ -74,7 +74,7 @@ const initialPosts = isAuthenticated && env.DB ? await getAllPosts(env.DB) : [];
               + New Post
             </button>
             <a
-              href="/api/admin/export"
+              href="/admin/api/export"
               class="px-2.5 py-1.5 text-xs font-mono rounded border border-neutral-200 dark:border-neutral-800 hover:border-emerald-500/60 text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-neutral-100 transition-colors"
             >
               Export JSON
@@ -430,16 +430,34 @@ const initialPosts = isAuthenticated && env.DB ? await getAllPosts(env.DB) : [];
 
       // Edit button handler
       document.querySelectorAll('.edit-post-btn').forEach((btn) => {
-        btn.addEventListener('click', () => {
+        btn.addEventListener('click', async () => {
+          const id = btn.dataset.id;
           showEditor(true, {
-            id: btn.dataset.id,
+            id,
             title: btn.dataset.title,
             slug: btn.dataset.slug,
-            content: btn.dataset.content,
+            content: btn.dataset.content || '',
             excerpt: btn.dataset.excerpt,
             tags: btn.dataset.tags,
             published: btn.dataset.published,
           });
+
+          // Fetch fresh canonical post data from API
+          try {
+            const res = await fetch(`/admin/api/posts/${id}`);
+            if (res.ok) {
+              const data = await res.json();
+              if (data.post && inputId.value === id) {
+                inputTitle.value = data.post.title || '';
+                inputSlug.value = data.post.slug || '';
+                inputExcerpt.value = data.post.excerpt || '';
+                inputTags.value = Array.isArray(data.post.tags) ? data.post.tags.join(', ') : '';
+                inputPublished.checked = Boolean(data.post.published);
+                inputContent.value = data.post.content || '';
+                updatePreview();
+              }
+            }
+          } catch {}
         });
       });
 
@@ -447,8 +465,17 @@ const initialPosts = isAuthenticated && env.DB ? await getAllPosts(env.DB) : [];
       async function deletePostById(id, title) {
         if (!confirm(`Are you sure you want to delete "${title}"?`)) return;
         try {
-          const res = await fetch(`/api/admin/posts/${id}`, { method: 'DELETE' });
-          if (!res.ok) throw new Error('Delete failed');
+          const res = await fetch(`/admin/api/posts/${id}`, { method: 'DELETE' });
+          if (!res.ok) {
+            let msg = 'Delete failed';
+            try {
+              const data = await res.json();
+              if (data.error) msg = `Delete failed: ${data.error}`;
+            } catch {
+              msg = `Delete failed (HTTP ${res.status})`;
+            }
+            throw new Error(msg);
+          }
           showAlert(`Post "${title}" deleted.`);
           setTimeout(() => window.location.reload(), 1000);
         } catch (err) {
@@ -498,7 +525,7 @@ const initialPosts = isAuthenticated && env.DB ? await getAllPosts(env.DB) : [];
         };
 
         const isEdit = Boolean(inputId.value);
-        const url = isEdit ? `/api/admin/posts/${inputId.value}` : '/api/admin/posts';
+        const url = isEdit ? `/admin/api/posts/${inputId.value}` : '/admin/api/posts';
         const method = isEdit ? 'PUT' : 'POST';
 
         try {
@@ -541,7 +568,7 @@ const initialPosts = isAuthenticated && env.DB ? await getAllPosts(env.DB) : [];
         form.append('file', file);
 
         try {
-          const res = await fetch('/api/admin/upload', {
+          const res = await fetch('/admin/api/upload', {
             method: 'POST',
             body: form,
           });

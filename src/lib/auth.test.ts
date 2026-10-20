@@ -8,6 +8,7 @@ import {
   clearJwksCache,
   normalizeAdminPath,
   isAdminPath,
+  extractAccessJwt,
 } from './auth';
 
 describe('Authentication: isDevAuthBypassAllowed', () => {
@@ -631,5 +632,44 @@ describe('Admin Boundary: Clear Failure on Misconfigured Access', () => {
     assert.equal(result.authenticated, false);
     assert.equal(result.statusCode, 401);
     assert.match(result.error!, /No admin emails configured/);
+  });
+});
+
+describe('Authentication: extractAccessJwt Header & Cookie Extraction', () => {
+  it('extracts JWT from Cf-Access-Jwt-Assertion header', () => {
+    const headers = new Headers({
+      'Cf-Access-Jwt-Assertion': 'test.jwt.token',
+    });
+    assert.equal(extractAccessJwt(headers), 'test.jwt.token');
+  });
+
+  it('extracts JWT from CF_Authorization cookie when header is missing', () => {
+    const headers = new Headers({
+      cookie: 'theme=dark; CF_Authorization=cookie.jwt.token; other=val',
+    });
+    assert.equal(extractAccessJwt(headers), 'cookie.jwt.token');
+  });
+
+  it('handles URL-encoded and quoted CF_Authorization cookies', () => {
+    const headers = new Headers({
+      cookie: 'CF_Authorization="encoded%2Ejwt%2Etoken"',
+    });
+    assert.equal(extractAccessJwt(headers), 'encoded.jwt.token');
+  });
+
+  it('prefers Cf-Access-Jwt-Assertion header over cookie if both present', () => {
+    const headers = new Headers({
+      'Cf-Access-Jwt-Assertion': 'header.jwt.token',
+      cookie: 'CF_Authorization=cookie.jwt.token',
+    });
+    assert.equal(extractAccessJwt(headers), 'header.jwt.token');
+  });
+
+  it('returns null when neither header nor cookie is present', () => {
+    const headers = new Headers({
+      cookie: 'theme=dark',
+    });
+    assert.equal(extractAccessJwt(headers), null);
+    assert.equal(extractAccessJwt(null), null);
   });
 });

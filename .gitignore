@@ -31,3 +31,5 @@ pnpm-debug.log*
 # Playwright
 test-results/
 playwright-report/
+
+backup-*.sql

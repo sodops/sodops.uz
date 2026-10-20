@@ -265,6 +265,7 @@ export async function savePost(
  * Deletes a post from D1.
  */
 export async function deletePost(db: D1Database, id: string): Promise<boolean> {
+  await db.prepare('DELETE FROM post_tags WHERE post_id = ?').bind(id).run();
   const res = await db.prepare('DELETE FROM posts WHERE id = ?').bind(id).run();
   return (res.meta.changes || 0) > 0;
 }
