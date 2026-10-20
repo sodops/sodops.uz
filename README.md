@@ -137,3 +137,72 @@ Configure **exactly ONE** Self-hosted Access Application in Cloudflare Zero Trus
 | **`401 Unauthorized` (Audience mismatch)** | The Worker's `CF_ACCESS_AUD` secret does not match the `aud` claim in the incoming `Cf-Access-Jwt-Assertion` token. Workers Logs will log `[Admin Auth Guard] 401 Unauthorized: Audience mismatch: expected ... got ...`. | Verify the AUD tag in Cloudflare Zero Trust -> Access -> Applications -> Edit -> Overview, then run `npx wrangler secret put CF_ACCESS_AUD` to update the secret. |
 | **`403 Forbidden` (Unauthorized email)** | The user passed Cloudflare Access authentication, but the email in their JWT payload is not present in the Worker's `ADMIN_EMAILS` secret list. Workers Logs will log `[Admin Auth Guard] 403 Forbidden: Unauthorized email address: user@example.com`. | Update the `ADMIN_EMAILS` secret with a comma-separated list of authorized email addresses: `npx wrangler secret put ADMIN_EMAILS`. |
 | **`401 Unauthorized` (Missing token or misconfigured team domain)** | Request reached `/admin` without going through Cloudflare Access, or `CF_ACCESS_TEAM_DOMAIN` secret/env is missing or invalid. Workers Logs will log `[Admin Auth Guard] 401 Unauthorized: Missing Cf-Access-Jwt-Assertion header` or `CF_ACCESS_TEAM_DOMAIN is required`. | Ensure access is routed through the Access domain, and verify `CF_ACCESS_TEAM_DOMAIN` is set to `sodops.cloudflareaccess.com` in `wrangler.jsonc` or secrets. |
+
+---
+
+## 8. Backup, Restore, Release & Rollback Procedures
+
+### 8.1 Cloudflare D1 Database Backups
+
+```bash
+# Export remote production database to an SQL dump
+npx wrangler d1 export sodops-db --remote --output=backups/backup-$(date +%F).sql
+
+# Export local development database
+npx wrangler d1 export sodops-db --local --output=backups/local-backup-$(date +%F).sql
+```
+
+### 8.2 D1 Point-in-Time Restore (Time Travel & SQL Import)
+
+Cloudflare D1 includes native **Time Travel**, maintaining a continuous transaction log for up to 30 days:
+
+```bash
+# 1. Inspect database bookmarks and restore points
+npx wrangler d1 time-travel info sodops-db
+
+# 2. Restore production database to a specific UTC timestamp
+npx wrangler d1 time-travel restore sodops-db --timestamp="2026-10-20T10:00:00Z"
+
+# 3. Alternatively, restore from a verified SQL backup file
+npx wrangler d1 execute sodops-db --remote --file=backups/backup-2026-10-20.sql
+```
+
+### 8.3 Release Procedure
+
+1. **Verify Local Quality Suite**:
+   ```bash
+   pnpm qa
+   ```
+2. **Review Pending Content Placeholders**:
+   ```bash
+   pnpm todos
+   ```
+3. **Build & Verify CSP Inline Script Hashes**:
+   ```bash
+   pnpm build
+   ```
+4. **Deploy to Cloudflare Workers**:
+   ```bash
+   npx wrangler deploy
+   ```
+5. **Verify Live Production Deployment**:
+   ```bash
+   pnpm qa:prod
+   ```
+
+### 8.4 Rollback Procedure
+
+- **Worker Code & Assets Rollback**:
+  ```bash
+  # List recent deployments
+  npx wrangler deployments list
+
+  # Instant rollback to previous known-good deployment
+  npx wrangler rollback [deployment-id]
+  ```
+- **Database Rollback**:
+  If a deployment corrupted or dropped D1 tables, immediately roll back database state using Time Travel:
+  ```bash
+  npx wrangler d1 time-travel restore sodops-db --timestamp="<pre-deploy-iso-timestamp>"
+  ```
+

@@ -1,0 +1,12 @@
+# Security Policy for sodops.uz
+# Conforms to RFC 9116: https://www.rfc-editor.org/rfc/rfc9116
+
+Contact: mailto:security@sodops.uz
+Expires: 2027-12-31T23:59:59.000Z
+Preferred-Languages: en, uz
+Canonical: https://sodops.uz/.well-known/security.txt
+Policy: https://sodops.uz/security-policy
+
+# TODO(sodiq): Add PGP key URL or fingerprint when available
+# Encryption: https://sodops.uz/pgp-key.txt
+# Acknowledgments: https://sodops.uz/hall-of-fame
