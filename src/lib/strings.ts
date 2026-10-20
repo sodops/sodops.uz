@@ -10,8 +10,8 @@ export const strings = {
       'DevOps-oriented developer and AI student based in Tashkent, Uzbekistan. Building fast, minimal infrastructure and systems.',
     location: 'Tashkent, Uzbekistan',
     domain: 'sodops.uz',
-    email: 'me@sodops.uz',
-    github: 'https://github.com', // TODO(sodiq): add exact github username
+    email: 'admin@example.com',
+    github: 'https://github.com/sodops',
   },
   nav: {
     blog: 'Blog',

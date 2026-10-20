@@ -16,8 +16,77 @@ export interface AuthContext {
 
 export interface AuthResult {
   authenticated: boolean;
+  statusCode?: 401 | 403 | 503;
   email?: string;
   error?: string;
+}
+
+/**
+ * Normalizes an arbitrary request pathname for administrative security boundary checks.
+ *
+ * Normalization algorithm:
+ * 1. Strip query string and hash
+ * 2. Decode percent-encoding iteratively (resolves %61 -> a, %2F -> /, etc.)
+ * 3. Lowercase all characters (case-insensitivity defense)
+ * 4. Replace backslashes with forward slashes
+ * 5. Strip matrix parameters (;param=...) from each path segment
+ * 6. Resolve POSIX dot segments ('.' and '..') and collapse redundant slashes ('//' -> '/')
+ * 7. Strip trailing slashes (except root '/')
+ */
+export function normalizeAdminPath(rawPath: string): string {
+  if (!rawPath) return '/';
+
+  // 1. Strip query string or hash if present
+  let path = rawPath.split('?')[0].split('#')[0];
+
+  // 2. Decode percent-encoding iteratively (up to 3 iterations, catching malformed URIs)
+  for (let i = 0; i < 3; i++) {
+    try {
+      const decoded = decodeURIComponent(path);
+      if (decoded === path) break;
+      path = decoded;
+    } catch {
+      break;
+    }
+  }
+
+  // 3. Lowercase
+  path = path.toLowerCase();
+
+  // 4. Normalize backslashes to forward slashes
+  path = path.replace(/\\/g, '/');
+
+  // 5. Split segments, strip matrix parameters from each segment, and resolve POSIX dot segments
+  const rawSegments = path.split('/');
+  const resolved: string[] = [];
+
+  for (const seg of rawSegments) {
+    // Strip matrix parameters (;foo=bar)
+    const cleanSeg = seg.split(';')[0].trim();
+    if (!cleanSeg || cleanSeg === '.') continue;
+    if (cleanSeg === '..') {
+      resolved.pop();
+    } else {
+      resolved.push(cleanSeg);
+    }
+  }
+
+  return '/' + resolved.join('/');
+}
+
+/**
+ * Returns true if the pathname targets the administrative boundary:
+ * - /admin or /admin/**
+ * - /api/admin or /api/admin/**
+ */
+export function isAdminPath(pathname: string): boolean {
+  const normalized = normalizeAdminPath(pathname);
+  return (
+    normalized === '/admin' ||
+    normalized.startsWith('/admin/') ||
+    normalized === '/api/admin' ||
+    normalized.startsWith('/api/admin/')
+  );
 }
 
 // In-memory cache for imported JWKS CryptoKey instances across Worker requests
@@ -142,6 +211,7 @@ export async function authenticateAdminRequest(
   if (allowedEmails.length === 0) {
     return {
       authenticated: false,
+      statusCode: 401,
       error: 'No admin emails configured in ADMIN_EMAILS',
     };
   }
@@ -157,6 +227,7 @@ export async function authenticateAdminRequest(
     // Fail closed if bypass attempted on non-dev or non-localhost
     return {
       authenticated: false,
+      statusCode: 401,
       error: 'DEV_BYPASS_AUTH rejected: Not on localhost in development mode',
     };
   }
@@ -165,6 +236,7 @@ export async function authenticateAdminRequest(
   if (!expectedAud || expectedAud.trim() === '') {
     return {
       authenticated: false,
+      statusCode: 401,
       error: 'Access authentication not configured: missing CF_ACCESS_AUD',
     };
   }
@@ -173,6 +245,7 @@ export async function authenticateAdminRequest(
   if (!publicKey && (!teamDomain || teamDomain.trim() === '')) {
     return {
       authenticated: false,
+      statusCode: 401,
       error: 'Access authentication not configured: missing CF_ACCESS_TEAM_DOMAIN',
     };
   }
@@ -181,6 +254,7 @@ export async function authenticateAdminRequest(
   if (!jwtAssertion || jwtAssertion.trim() === '') {
     return {
       authenticated: false,
+      statusCode: 401,
       error: 'Missing Cf-Access-Jwt-Assertion header',
     };
   }
@@ -191,6 +265,7 @@ export async function authenticateAdminRequest(
     if (parts.length !== 3) {
       return {
         authenticated: false,
+        statusCode: 401,
         error: 'Malformed JWT assertion',
       };
     }
@@ -203,6 +278,7 @@ export async function authenticateAdminRequest(
     if (header.alg !== 'RS256') {
       return {
         authenticated: false,
+        statusCode: 401,
         error: `Unsupported JWT algorithm '${header.alg}': only RS256 is accepted`,
       };
     }
@@ -214,6 +290,7 @@ export async function authenticateAdminRequest(
       if (!fetchedKey) {
         return {
           authenticated: false,
+          statusCode: 401,
           error: `Public key not found for kid '${header.kid || 'default'}' from Access certs`,
         };
       }
@@ -223,6 +300,7 @@ export async function authenticateAdminRequest(
     if (!keyToUse) {
       return {
         authenticated: false,
+        statusCode: 401,
         error: 'Public key not available for JWT verification',
       };
     }
@@ -239,6 +317,7 @@ export async function authenticateAdminRequest(
     if (!valid) {
       return {
         authenticated: false,
+        statusCode: 401,
         error: 'Invalid JWT cryptographic signature',
       };
     }
@@ -252,12 +331,14 @@ export async function authenticateAdminRequest(
     if (payload.exp === undefined || payload.exp === null || typeof payload.exp !== 'number') {
       return {
         authenticated: false,
+        statusCode: 401,
         error: 'Missing required exp claim',
       };
     }
     if (payload.exp < now) {
       return {
         authenticated: false,
+        statusCode: 401,
         error: 'JWT assertion expired',
       };
     }
@@ -266,6 +347,7 @@ export async function authenticateAdminRequest(
     if (!payload.iss || typeof payload.iss !== 'string' || payload.iss.trim() === '') {
       return {
         authenticated: false,
+        statusCode: 401,
         error: 'Missing required iss claim',
       };
     }
@@ -277,6 +359,7 @@ export async function authenticateAdminRequest(
       if (payload.iss !== expectedIss) {
         return {
           authenticated: false,
+          statusCode: 401,
           error: `Issuer mismatch: expected '${expectedIss}', got '${payload.iss}'`,
         };
       }
@@ -286,6 +369,7 @@ export async function authenticateAdminRequest(
     if (!payload.aud) {
       return {
         authenticated: false,
+        statusCode: 401,
         error: 'Missing required aud claim',
       };
     }
@@ -293,6 +377,7 @@ export async function authenticateAdminRequest(
     if (tokenAuds.length === 0 || !tokenAuds.some(Boolean) || !tokenAuds.includes(expectedAud)) {
       return {
         authenticated: false,
+        statusCode: 401,
         error: (!tokenAuds.some(Boolean)) ? 'Missing required aud claim' : 'Audience mismatch',
       };
     }
@@ -301,6 +386,7 @@ export async function authenticateAdminRequest(
     if (!payload.email || !allowedEmails.includes(payload.email.toLowerCase())) {
       return {
         authenticated: false,
+        statusCode: 403,
         error: `Unauthorized email address: ${payload.email}`,
       };
     }
@@ -312,6 +398,7 @@ export async function authenticateAdminRequest(
   } catch (err: any) {
     return {
       authenticated: false,
+      statusCode: 401,
       error: `JWT parsing error: ${err?.message || 'Unknown error'}`,
     };
   }

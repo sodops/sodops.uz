@@ -6,12 +6,12 @@ import { env } from 'cloudflare:workers';
 
 export const prerender = false;
 
-export const GET: APIRoute = async ({ request }) => {
-  const auth = await authenticateAdminRequest({
+export const GET: APIRoute = async ({ request, locals }) => {
+  const auth = (locals as any)?.auth || await authenticateAdminRequest({
     isDev: import.meta.env.DEV,
     host: request.headers.get('host'),
     jwtAssertion: request.headers.get('Cf-Access-Jwt-Assertion'),
-    adminEmails: env.ADMIN_EMAILS || env.ADMIN_EMAIL || 'me@sodops.uz',
+    adminEmails: env.ADMIN_EMAILS || env.ADMIN_EMAIL,
     expectedAud: env.CF_ACCESS_AUD,
     teamDomain: env.CF_ACCESS_TEAM_DOMAIN,
     devBypassAuth: env.DEV_BYPASS_AUTH === 'true' || import.meta.env.DEV,
@@ -19,7 +19,7 @@ export const GET: APIRoute = async ({ request }) => {
 
   if (!auth.authenticated) {
     return new Response(JSON.stringify({ error: auth.error || 'Unauthorized' }), {
-      status: 401,
+      status: auth.statusCode || 401,
       headers: { 'Content-Type': 'application/json' },
     });
   }
@@ -30,12 +30,12 @@ export const GET: APIRoute = async ({ request }) => {
   });
 };
 
-export const POST: APIRoute = async ({ request }) => {
-  const auth = await authenticateAdminRequest({
+export const POST: APIRoute = async ({ request, locals }) => {
+  const auth = (locals as any)?.auth || await authenticateAdminRequest({
     isDev: import.meta.env.DEV,
     host: request.headers.get('host'),
     jwtAssertion: request.headers.get('Cf-Access-Jwt-Assertion'),
-    adminEmails: env.ADMIN_EMAILS || env.ADMIN_EMAIL || 'me@sodops.uz',
+    adminEmails: env.ADMIN_EMAILS || env.ADMIN_EMAIL,
     expectedAud: env.CF_ACCESS_AUD,
     teamDomain: env.CF_ACCESS_TEAM_DOMAIN,
     devBypassAuth: env.DEV_BYPASS_AUTH === 'true' || import.meta.env.DEV,
@@ -43,7 +43,7 @@ export const POST: APIRoute = async ({ request }) => {
 
   if (!auth.authenticated) {
     return new Response(JSON.stringify({ error: auth.error || 'Unauthorized' }), {
-      status: 401,
+      status: auth.statusCode || 401,
       headers: { 'Content-Type': 'application/json' },
     });
   }

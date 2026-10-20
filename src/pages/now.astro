@@ -2,9 +2,16 @@
 import BaseLayout from '../layouts/BaseLayout.astro';
 import { strings } from '../lib/strings';
 
-export const prerender = true;
+export const prerender = false;
 
-const lastUpdated = 'October 2026';
+// Edge cache tags: 1h TTL, 1d stale-while-revalidate, tagged with 'pages'
+Astro.cache.set({
+  maxAge: 3600,
+  swr: 86400,
+  tags: ['pages'],
+});
+
+const lastUpdated = 'TODO(sodiq)';
 ---
 
 <BaseLayout
@@ -22,7 +29,7 @@ const lastUpdated = 'October 2026';
         </span>
       </div>
       <p class="text-sm text-neutral-500 dark:text-neutral-400 font-mono">
-        This is a "now page" inspired by Derek Sivers, outlining my current priorities and active projects.
+        Now page inspired by Derek Sivers, outlining current focus and priorities.
       </p>
     </header>
 
@@ -32,33 +39,33 @@ const lastUpdated = 'October 2026';
           Location
         </h2>
         <p>
-          Living and working in <strong class="text-neutral-900 dark:text-neutral-100">Tashkent, Uzbekistan</strong>.
+          Based in <strong class="text-neutral-900 dark:text-neutral-100">Tashkent, Uzbekistan</strong>.
         </p>
       </section>
 
       <section class="space-y-2">
         <h2 class="text-base font-semibold text-neutral-900 dark:text-neutral-100 font-sans">
-          Primary Focus
+          Current Focus
         </h2>
         <ul class="list-disc pl-5 space-y-1.5 text-neutral-600 dark:text-neutral-400 text-sm">
           <li>
-            <strong class="text-neutral-900 dark:text-neutral-200">DevOps & Homelab Engineering:</strong> Managing a personal k3s cluster, automating deployments via GitHub Actions, and refining Prometheus/Grafana dashboards for server monitoring.
+            DevOps-oriented development with Docker, Kubernetes (k3s), Prometheus, Grafana, Loki, Cloudflare, and DigitalOcean.
           </li>
           <li>
-            <strong class="text-neutral-900 dark:text-neutral-200">AI Studies:</strong> Studying applied AI, model evaluation, and autonomous coding agents.
+            AI studies.
           </li>
           <li>
-            <strong class="text-neutral-900 dark:text-neutral-200">Personal Edge Platform:</strong> Building and running <a href="/" class="text-emerald-600 dark:text-emerald-400 hover:underline">sodops.uz</a> on Cloudflare Workers, D1, and R2.
+            TODO(sodiq): Add specific active projects and focus areas.
           </li>
         </ul>
       </section>
 
       <section class="space-y-2">
         <h2 class="text-base font-semibold text-neutral-900 dark:text-neutral-100 font-sans">
-          What I'm Reading & Exploring
+          Learning & Research
         </h2>
         <p class="text-neutral-600 dark:text-neutral-400 text-sm">
-          Deep-diving into distributed system reliability, Linux kernel networking internals, and minimal web architecture.
+          TODO(sodiq): Specify current reading list, research papers, or courses.
         </p>
       </section>
     </div>

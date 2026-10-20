@@ -391,7 +391,8 @@ describe('Minecraft Check Execution: Socket Handshake, Timeouts & Fallback', () 
     const resProxied = await pingMinecraftEndpoint('mc.sodops.uz', 25565, 3000, mockProxied as any);
     assert.equal(resProxied.status, 'down');
     const metaProxied = JSON.parse(resProxied.metadata!);
-    assert.equal(metaProxied.error, 'dns/proxied: connection to Cloudflare IP prohibited');
+    assert.equal(metaProxied.error, 'dns/proxied');
+    assert.ok(metaProxied.error_raw.includes('prohibited'));
 
     // 3. Unresolved / NXDOMAIN
     const mockDns = () => {
@@ -400,7 +401,16 @@ describe('Minecraft Check Execution: Socket Handshake, Timeouts & Fallback', () 
     const resDns = await pingMinecraftEndpoint('mc.sodops.uz', 25565, 3000, mockDns as any);
     assert.equal(resDns.status, 'down');
     const metaDns = JSON.parse(resDns.metadata!);
-    assert.equal(metaDns.error, 'unresolved/dns');
+    assert.equal(metaDns.error, 'dns');
+
+    // 4. Cannot connect to specified address (unreachable/dns)
+    const mockUnreachable = () => {
+      throw new Error('Cannot connect to the specified address.');
+    };
+    const resUnreachable = await pingMinecraftEndpoint('mc.sodops.uz', 25565, 3000, mockUnreachable as any);
+    assert.equal(resUnreachable.status, 'down');
+    const metaUnreachable = JSON.parse(resUnreachable.metadata!);
+    assert.equal(metaUnreachable.error, 'unreachable/dns');
 
     // 4. Timeout
     const mockTimeout = () => {

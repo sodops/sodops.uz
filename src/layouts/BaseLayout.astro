@@ -4,6 +4,7 @@ import Header from '../components/Header.astro';
 import Footer from '../components/Footer.astro';
 import CommandPalette from '../components/CommandPalette';
 import { strings } from '../lib/strings';
+import { env } from 'cloudflare:workers';
 import '../styles/global.css';
 
 interface Props {
@@ -26,6 +27,13 @@ const {
 
 const siteBase = (import.meta.env.SITE_URL || Astro.site?.toString() || 'https://sodops.uz').replace(/\/$/, '');
 const canonicalURL = new URL(Astro.url.pathname, siteBase);
+
+const siteIndexing = (
+  (env as any)?.SITE_INDEXING ||
+  (Astro.locals as any)?.runtime?.env?.SITE_INDEXING ||
+  import.meta.env.SITE_INDEXING ||
+  'off'
+).toLowerCase();
 ---
 
 <!doctype html>
@@ -41,6 +49,14 @@ const canonicalURL = new URL(Astro.url.pathname, siteBase);
       title={strings.site.title}
       href="/feed.xml"
     />
+
+    {
+      siteIndexing !== 'on' ? (
+        <meta name="robots" content="noindex, nofollow" />
+      ) : (
+        <meta name="robots" content="index, follow" />
+      )
+    }
 
     <!-- Anti-FOUC theme initialization: runs synchronously before body render -->
     <script is:inline src="/theme-init.js"></script>

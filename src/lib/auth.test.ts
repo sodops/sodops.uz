@@ -6,6 +6,8 @@ import {
   authenticateAdminRequest,
   parseAllowedEmails,
   clearJwksCache,
+  normalizeAdminPath,
+  isAdminPath,
 } from './auth';
 
 describe('Authentication: isDevAuthBypassAllowed', () => {
@@ -31,18 +33,18 @@ describe('Authentication: isDevAuthBypassAllowed', () => {
 
 describe('Authentication: parseAllowedEmails', () => {
   it('parses comma-separated string of emails', () => {
-    const emails = parseAllowedEmails('me@sodops.uz, Sodiq@Github.com , second@domain.org');
-    assert.deepEqual(emails, ['me@sodops.uz', 'sodiq@github.com', 'second@domain.org']);
+    const emails = parseAllowedEmails('admin@example.com, Other@Example.com , second@domain.org');
+    assert.deepEqual(emails, ['admin@example.com', 'other@example.com', 'second@domain.org']);
   });
 
   it('parses array of emails', () => {
-    const emails = parseAllowedEmails(['me@sodops.uz', 'sodiq@github.com']);
-    assert.deepEqual(emails, ['me@sodops.uz', 'sodiq@github.com']);
+    const emails = parseAllowedEmails(['admin@example.com', 'other@example.com']);
+    assert.deepEqual(emails, ['admin@example.com', 'other@example.com']);
   });
 
   it('falls back to adminEmail', () => {
-    const emails = parseAllowedEmails(undefined, 'me@sodops.uz');
-    assert.deepEqual(emails, ['me@sodops.uz']);
+    const emails = parseAllowedEmails(undefined, 'admin@example.com');
+    assert.deepEqual(emails, ['admin@example.com']);
   });
 
   it('returns empty array when neither provided', () => {
@@ -52,7 +54,7 @@ describe('Authentication: parseAllowedEmails', () => {
 });
 
 describe('Authentication: Production Fail-Closed Rules', () => {
-  const adminEmails = 'me@sodops.uz,sodiq@github.com';
+  const adminEmails = 'admin@example.com,other@example.com';
   const expectedAud = 'aud-test-123';
   const teamDomain = 'sodops.cloudflareaccess.com';
 
@@ -65,7 +67,7 @@ describe('Authentication: Production Fail-Closed Rules', () => {
       devBypassAuth: true,
     });
     assert.equal(result.authenticated, true);
-    assert.equal(result.email, 'me@sodops.uz');
+    assert.equal(result.email, 'admin@example.com');
   });
 
   it('fails closed when dev bypass attempted in production', async () => {
@@ -125,7 +127,7 @@ describe('Authentication: Production Fail-Closed Rules', () => {
     const header = Buffer.from(JSON.stringify({ alg: 'none', typ: 'JWT' })).toString('base64url');
     const payload = Buffer.from(
       JSON.stringify({
-        email: 'me@sodops.uz',
+        email: 'admin@example.com',
         aud: expectedAud,
         exp: Math.floor(Date.now() / 1000) + 3600,
       })
@@ -146,7 +148,7 @@ describe('Authentication: Production Fail-Closed Rules', () => {
 });
 
 describe('Authentication: Cryptographic JWT Verification (RSA Key Pair & Multi-Email)', () => {
-  const adminEmails = 'me@sodops.uz,sodiq@github.com';
+  const adminEmails = 'admin@example.com,other@example.com';
   const expectedAud = 'cf-access-aud-sodops-uz';
   const teamDomain = 'sodops.cloudflareaccess.com';
   let publicKey: CryptoKey;
@@ -233,7 +235,7 @@ describe('Authentication: Cryptographic JWT Verification (RSA Key Pair & Multi-E
 
   it('valid signed token with primary email passes', async () => {
     const token = await createSignedJwt({
-      email: 'me@sodops.uz',
+      email: 'admin@example.com',
       aud: expectedAud,
       exp: Math.floor(Date.now() / 1000) + 3600,
     });
@@ -249,12 +251,12 @@ describe('Authentication: Cryptographic JWT Verification (RSA Key Pair & Multi-E
     });
 
     assert.equal(result.authenticated, true);
-    assert.equal(result.email, 'me@sodops.uz');
+    assert.equal(result.email, 'admin@example.com');
   });
 
   it('valid signed token with secondary GitHub email passes', async () => {
     const token = await createSignedJwt({
-      email: 'sodiq@github.com',
+      email: 'other@example.com',
       aud: expectedAud,
       exp: Math.floor(Date.now() / 1000) + 3600,
     });
@@ -270,13 +272,13 @@ describe('Authentication: Cryptographic JWT Verification (RSA Key Pair & Multi-E
     });
 
     assert.equal(result.authenticated, true);
-    assert.equal(result.email, 'sodiq@github.com');
+    assert.equal(result.email, 'other@example.com');
   });
 
   it('strictly rejects token signed with attacker key (wrong signature)', async () => {
     const token = await createSignedJwt(
       {
-        email: 'me@sodops.uz',
+        email: 'admin@example.com',
         aud: expectedAud,
         exp: Math.floor(Date.now() / 1000) + 3600,
       },
@@ -299,7 +301,7 @@ describe('Authentication: Cryptographic JWT Verification (RSA Key Pair & Multi-E
 
   it('strictly rejects token with mismatched aud claim', async () => {
     const token = await createSignedJwt({
-      email: 'me@sodops.uz',
+      email: 'admin@example.com',
       aud: 'wrong-audience-tag',
       exp: Math.floor(Date.now() / 1000) + 3600,
     });
@@ -320,7 +322,7 @@ describe('Authentication: Cryptographic JWT Verification (RSA Key Pair & Multi-E
 
   it('strictly rejects token with missing aud claim', async () => {
     const token = await createSignedJwt({
-      email: 'me@sodops.uz',
+      email: 'admin@example.com',
       aud: undefined,
       exp: Math.floor(Date.now() / 1000) + 3600,
     });
@@ -341,7 +343,7 @@ describe('Authentication: Cryptographic JWT Verification (RSA Key Pair & Multi-E
 
   it('strictly rejects token with wrong iss claim (issuer mismatch)', async () => {
     const token = await createSignedJwt({
-      email: 'me@sodops.uz',
+      email: 'admin@example.com',
       aud: expectedAud,
       iss: 'https://evil.cloudflareaccess.com',
       exp: Math.floor(Date.now() / 1000) + 3600,
@@ -363,7 +365,7 @@ describe('Authentication: Cryptographic JWT Verification (RSA Key Pair & Multi-E
 
   it('strictly rejects token with missing iss claim', async () => {
     const token = await createSignedJwt({
-      email: 'me@sodops.uz',
+      email: 'admin@example.com',
       aud: expectedAud,
       iss: undefined,
       exp: Math.floor(Date.now() / 1000) + 3600,
@@ -385,7 +387,7 @@ describe('Authentication: Cryptographic JWT Verification (RSA Key Pair & Multi-E
 
   it('strictly rejects expired token', async () => {
     const token = await createSignedJwt({
-      email: 'me@sodops.uz',
+      email: 'admin@example.com',
       aud: expectedAud,
       exp: Math.floor(Date.now() / 1000) - 120, // expired 2 minutes ago
     });
@@ -406,7 +408,7 @@ describe('Authentication: Cryptographic JWT Verification (RSA Key Pair & Multi-E
 
   it('strictly rejects token with missing exp claim', async () => {
     const token = await createSignedJwt({
-      email: 'me@sodops.uz',
+      email: 'admin@example.com',
       aud: expectedAud,
       exp: undefined,
     });
@@ -442,12 +444,13 @@ describe('Authentication: Cryptographic JWT Verification (RSA Key Pair & Multi-E
     });
 
     assert.equal(result.authenticated, false);
+    assert.equal(result.statusCode, 403);
     assert.match(result.error!, /Unauthorized email address/);
   });
 
   it('successfully fetches and verifies public key via mock JWKS endpoint', async () => {
     const token = await createSignedJwt({
-      email: 'me@sodops.uz',
+      email: 'admin@example.com',
       aud: expectedAud,
       exp: Math.floor(Date.now() / 1000) + 3600,
     });
@@ -475,6 +478,158 @@ describe('Authentication: Cryptographic JWT Verification (RSA Key Pair & Multi-E
     });
 
     assert.equal(result.authenticated, true);
-    assert.equal(result.email, 'me@sodops.uz');
+    assert.equal(result.email, 'admin@example.com');
+  });
+});
+
+describe('Admin Boundary: Path Normalization & Prefix Matching', () => {
+  it('normalizes standard admin paths', () => {
+    assert.equal(normalizeAdminPath('/admin'), '/admin');
+    assert.equal(normalizeAdminPath('/admin/'), '/admin');
+    assert.equal(normalizeAdminPath('/Admin'), '/admin');
+    assert.equal(normalizeAdminPath('//admin'), '/admin');
+    assert.equal(normalizeAdminPath('/%61dmin'), '/admin');
+    assert.equal(normalizeAdminPath('/admin/../admin'), '/admin');
+    assert.equal(normalizeAdminPath('/api/admin'), '/api/admin');
+    assert.equal(normalizeAdminPath('/api/admin/posts'), '/api/admin/posts');
+    assert.equal(normalizeAdminPath('/api/admin%2Fposts'), '/api/admin/posts');
+    assert.equal(normalizeAdminPath('/api/ADMIN/export'), '/api/admin/export');
+  });
+
+  it('matches all required admin path variations via isAdminPath', () => {
+    const requiredAdminPaths = [
+      '/admin',
+      '/admin/',
+      '/Admin',
+      '//admin',
+      '/%61dmin',
+      '/admin/../admin',
+      '/api/admin',
+      '/api/admin/posts',
+      '/api/admin%2Fposts',
+      '/api/ADMIN/export',
+      '/admin/new',
+      '/admin/anything',
+      '/api/admin/nonexistent',
+      '/admin;param=1',
+      '/api/admin;param/posts',
+      '//admin//posts//',
+      '/Admin/Upload',
+    ];
+
+    for (const p of requiredAdminPaths) {
+      assert.equal(
+        isAdminPath(p),
+        true,
+        `Expected '${p}' to match admin boundary`
+      );
+    }
+  });
+
+  it('strictly excludes non-admin public paths from admin boundary', () => {
+    const publicPaths = [
+      '/',
+      '/blog',
+      '/blog/hello-world',
+      '/projects',
+      '/uses',
+      '/now',
+      '/api/health',
+      '/api/search.json',
+      '/feed.xml',
+      '/sitemap.xml',
+      '/admin-not',
+      '/administrator',
+      '/api/admin-public',
+    ];
+
+    for (const p of publicPaths) {
+      assert.equal(
+        isAdminPath(p),
+        false,
+        `Expected '${p}' to NOT match admin boundary`
+      );
+    }
+  });
+});
+
+describe('Admin Boundary: Clear Failure on Misconfigured Access', () => {
+  it('fails closed with status 401 when CF_ACCESS_AUD is missing in production', async () => {
+    const result = await authenticateAdminRequest({
+      isDev: false,
+      host: 'sodops.uz',
+      jwtAssertion: 'header.payload.sig',
+      adminEmails: 'admin@example.com',
+      expectedAud: undefined,
+      teamDomain: 'sodops.cloudflareaccess.com',
+    });
+
+    assert.equal(result.authenticated, false);
+    assert.equal(result.statusCode, 401);
+    assert.match(result.error!, /missing CF_ACCESS_AUD/);
+  });
+
+  it('fails closed with status 401 when CF_ACCESS_TEAM_DOMAIN is missing in production', async () => {
+    const result = await authenticateAdminRequest({
+      isDev: false,
+      host: 'sodops.uz',
+      jwtAssertion: 'header.payload.sig',
+      adminEmails: 'admin@example.com',
+      expectedAud: 'cf-access-aud-123',
+      teamDomain: undefined,
+    });
+
+    assert.equal(result.authenticated, false);
+    assert.equal(result.statusCode, 401);
+    assert.match(result.error!, /missing CF_ACCESS_TEAM_DOMAIN/);
+  });
+
+  it('fails closed with status 401 when JWKS certs fetch fails or throws', async () => {
+    const header = Buffer.from(
+      JSON.stringify({ alg: 'RS256', typ: 'JWT', kid: 'unknown-kid' })
+    ).toString('base64url');
+    const payload = Buffer.from(
+      JSON.stringify({
+        iss: 'https://sodops.cloudflareaccess.com',
+        aud: 'cf-access-aud-123',
+        email: 'admin@example.com',
+        exp: Math.floor(Date.now() / 1000) + 3600,
+      })
+    ).toString('base64url');
+    const token = `${header}.${payload}.mockSignature`;
+
+    // Mock fetch that simulates network or upstream error
+    const failingFetch = async () => {
+      return new Response('Internal Server Error', { status: 500 });
+    };
+
+    const result = await authenticateAdminRequest({
+      isDev: false,
+      host: 'sodops.uz',
+      jwtAssertion: token,
+      adminEmails: 'admin@example.com',
+      expectedAud: 'cf-access-aud-123',
+      teamDomain: 'sodops.cloudflareaccess.com',
+      fetchFn: failingFetch as any,
+    });
+
+    assert.equal(result.authenticated, false);
+    assert.equal(result.statusCode, 401);
+    assert.match(result.error!, /Public key not found/);
+  });
+
+  it('fails closed with status 401 when ADMIN_EMAILS is missing or empty', async () => {
+    const result = await authenticateAdminRequest({
+      isDev: false,
+      host: 'sodops.uz',
+      jwtAssertion: 'some.jwt.token',
+      adminEmails: '',
+      expectedAud: 'cf-access-aud-123',
+      teamDomain: 'sodops.cloudflareaccess.com',
+    });
+
+    assert.equal(result.authenticated, false);
+    assert.equal(result.statusCode, 401);
+    assert.match(result.error!, /No admin emails configured/);
   });
 });

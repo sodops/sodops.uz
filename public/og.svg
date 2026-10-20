@@ -21,22 +21,19 @@
   
   <!-- Tagline -->
   <text x="80" y="310" font-family="system-ui, -apple-system, sans-serif" font-size="32" font-weight="500" fill="#a3a3a3">
-    DevOps Engineer &amp; AI Student
+    DevOps-Oriented Developer &amp; AI Student
   </text>
   
-  <!-- Description -->
+  <!-- Location -->
   <text x="80" y="380" font-family="system-ui, -apple-system, sans-serif" font-size="22" font-weight="400" fill="#737373">
-    Building fast, minimal systems with Kubernetes (k3s), Prometheus, and Cloudflare.
-  </text>
-  <text x="80" y="415" font-family="system-ui, -apple-system, sans-serif" font-size="22" font-weight="400" fill="#737373">
     Based in Tashkent, Uzbekistan.
   </text>
 
   <!-- Bottom Divider -->
-  <line x1="80" y1="475" x2="1120" y2="475" stroke="#262626" stroke-width="1.5"/>
+  <line x1="80" y1="450" x2="1120" y2="450" stroke="#262626" stroke-width="1.5"/>
 
-  <!-- Footer Tags -->
-  <text x="80" y="525" font-family="monospace, Courier, sans-serif" font-size="16" fill="#10b981">
-    [k3s]  [Docker]  [Prometheus]  [Loki]  [Cloudflare Workers]  [D1]
+  <!-- Verified Prompt Stack Tags -->
+  <text x="80" y="510" font-family="monospace, Courier, sans-serif" font-size="15" fill="#10b981">
+    [Docker] [Kubernetes (k3s)] [Prometheus] [Grafana] [Loki] [Cloudflare] [DigitalOcean]
   </text>
 </svg>

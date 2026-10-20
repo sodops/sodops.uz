@@ -2,7 +2,7 @@
 import BaseLayout from '../layouts/BaseLayout.astro';
 import { strings } from '../lib/strings';
 
-export const prerender = true;
+export const prerender = false;
 ---
 
 <BaseLayout
@@ -40,10 +40,15 @@ export const prerender = true;
         type="button"
         id="error-search-trigger"
         class="px-3.5 py-1.5 rounded border border-neutral-200 dark:border-neutral-800 text-neutral-500 hover:text-neutral-900 dark:hover:text-neutral-100 transition-colors cursor-pointer"
-        onclick="window.dispatchEvent(new CustomEvent('open-command-palette'))"
       >
         Search site (Ctrl+K)
       </button>
     </div>
   </div>
+
+  <script>
+    document.getElementById('error-search-trigger')?.addEventListener('click', () => {
+      window.dispatchEvent(new CustomEvent('open-command-palette'));
+    });
+  </script>
 </BaseLayout>

@@ -288,6 +288,7 @@ export interface Project {
   check_type?: 'http' | 'tcp' | 'minecraft';
   check_host?: string | null;
   check_port?: number | null;
+  status?: 'active' | 'paused' | string;
 }
 
 export interface UptimeCheck {
@@ -308,11 +309,11 @@ export interface DayStatus {
 }
 
 export interface ProjectWithStatus extends Project {
-  current_status: 'up' | 'down' | 'degraded' | 'unknown';
+  current_status: 'up' | 'down' | 'degraded' | 'unknown' | 'paused';
   latest_latency_ms: number | null;
   latest_check_at: string | null;
   latest_metadata?: string | null;
-  uptime_percentage_30d: number;
+  uptime_percentage_30d: number | null;
   uptime_history_30d: DayStatus[];
   has_history: boolean;
 }
@@ -411,6 +412,19 @@ export async function getProjectsWithStatus(
   }
 
   return projects.map((p) => {
+    if (p.status === 'paused') {
+      return {
+        ...p,
+        current_status: 'paused',
+        latest_latency_ms: null,
+        latest_check_at: null,
+        latest_metadata: null,
+        uptime_percentage_30d: null,
+        uptime_history_30d: [],
+        has_history: false,
+      };
+    }
+
     const latest = latestMap.get(p.id);
     const dateMap = projectAggMap.get(p.id);
 
@@ -500,6 +514,19 @@ export async function getFeaturedProjects(
   }
 
   return projects.map((p) => {
+    if (p.status === 'paused') {
+      return {
+        ...p,
+        current_status: 'paused',
+        latest_latency_ms: null,
+        latest_check_at: null,
+        latest_metadata: null,
+        uptime_percentage_30d: null,
+        uptime_history_30d: [],
+        has_history: false,
+      };
+    }
+
     const latest = latestMap.get(p.id);
     return {
       ...p,

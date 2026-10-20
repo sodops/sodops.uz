@@ -2,7 +2,14 @@
 import BaseLayout from '../layouts/BaseLayout.astro';
 import { strings } from '../lib/strings';
 
-export const prerender = true;
+export const prerender = false;
+
+// Edge cache tags: 1h TTL, 1d stale-while-revalidate, tagged with 'pages'
+Astro.cache.set({
+  maxAge: 3600,
+  swr: 86400,
+  tags: ['pages'],
+});
 
 const categories = [
   {
@@ -10,11 +17,11 @@ const categories = [
     items: [
       {
         name: 'Workstation Laptop',
-        description: 'ThinkPad running Linux. Solid keyboard, durable chassis, and dependable hardware support.',
+        description: 'TODO(sodiq): Specify workstation hardware and specs.',
       },
       {
-        name: 'Display & Input',
-        description: '27-inch 4K external IPS display with ergonomic mechanical keyboard (linear switches).',
+        name: 'Display & Peripherals',
+        description: 'TODO(sodiq): Specify monitors, keyboard, and peripherals.',
       },
     ],
   },
@@ -22,54 +29,46 @@ const categories = [
     title: 'Operating System & Terminal',
     items: [
       {
-        name: 'Linux (Debian / Ubuntu LTS)',
-        description: 'Clean, lightweight setup without desktop bloat. Window management tailored for productivity.',
+        name: 'Operating System',
+        description: 'TODO(sodiq): Specify Linux distribution and window environment.',
       },
       {
         name: 'Terminal & Shell',
-        description: 'Alacritty + zsh with vi mode, starship prompt, and tmux for persistent workspace sessions.',
+        description: 'TODO(sodiq): Specify shell, terminal emulator, and multiplexer.',
       },
       {
         name: 'CLI Utilities',
-        description: 'ripgrep, fd, fzf, jq, curl, htop, and bat for rapid local search and pipeline scripting.',
+        description: 'TODO(sodiq): Specify core CLI utilities and daily workflow tools.',
       },
     ],
   },
   {
-    title: 'DevOps & Homelab Infrastructure',
+    title: 'DevOps & Infrastructure Stack',
     items: [
       {
-        name: 'Kubernetes (k3s)',
-        description: 'Lightweight Kubernetes cluster running self-hosted applications and telemetry probes.',
+        name: 'Containers & Orchestration',
+        description: 'Docker and Kubernetes (k3s).',
       },
       {
-        name: 'Containers',
-        description: 'Docker and containerd for reproducible service packaging and local sandboxing.',
-      },
-      {
-        name: 'Observability Stack',
-        description: 'Prometheus for time-series metrics, Grafana for real-time dashboards, and Loki for aggregated logging.',
+        name: 'Observability & Monitoring',
+        description: 'Prometheus, Grafana, and Loki.',
       },
       {
         name: 'Cloud & Edge Providers',
-        description: 'Cloudflare (Workers, D1, KV, R2, DNS, Access) and DigitalOcean VPS for hosted instances.',
+        description: 'Cloudflare and DigitalOcean.',
       },
     ],
   },
   {
-    title: 'Development & Editors',
+    title: 'Development & Tools',
     items: [
       {
-        name: 'Editors',
-        description: 'Neovim with Lua configuration for quick edits; VS Code with vim bindings for complex TypeScript projects.',
+        name: 'Editor',
+        description: 'TODO(sodiq): Specify primary editor, IDE, and keybindings.',
       },
       {
-        name: 'Languages & Runtimes',
-        description: 'TypeScript, Node.js, Python, Bash scripting, and SQL (SQLite/D1).',
-      },
-      {
-        name: 'Version Control',
-        description: 'Git with signed SSH commits, GitHub Actions for CI/CD automation.',
+        name: 'Languages & Environment',
+        description: 'TODO(sodiq): Specify languages and runtimes.',
       },
     ],
   },

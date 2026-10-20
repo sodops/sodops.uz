@@ -5,7 +5,7 @@ export default defineConfig({
   timeout: 30000,
   retries: 0,
   use: {
-    baseURL: process.env.E2E_BASE_URL || 'https://sodops.uz',
+    baseURL: process.env.E2E_BASE_URL || 'http://localhost:4321',
     trace: 'on-first-retry',
     headless: true,
   },

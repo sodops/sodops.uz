@@ -35,5 +35,6 @@
   "vars": {
     "SITE_URL": "https://sodops.uz",
     "CF_ACCESS_TEAM_DOMAIN": "sodops.cloudflareaccess.com",
+    "SITE_INDEXING": "off",
   },
 }

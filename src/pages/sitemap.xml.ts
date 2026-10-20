@@ -6,7 +6,25 @@ export const prerender = false;
 
 import { env } from 'cloudflare:workers';
 
-export const GET: APIRoute = async () => {
+export const GET: APIRoute = async ({ locals }) => {
+  const siteIndexing = (
+    (env as any)?.SITE_INDEXING ||
+    (locals as any)?.runtime?.env?.SITE_INDEXING ||
+    import.meta.env.SITE_INDEXING ||
+    'off'
+  ).toLowerCase();
+
+  // If site indexing is disabled, do not advertise or serve sitemap
+  if (siteIndexing !== 'on') {
+    return new Response('Not Found', {
+      status: 404,
+      headers: {
+        'Content-Type': 'text/plain',
+        'X-Robots-Tag': 'noindex, nofollow',
+      },
+    });
+  }
+
   const baseUrl = (env?.SITE_URL || 'https://sodops.uz').replace(/\/$/, '');
 
   let postUrls: Array<{ loc: string; lastmod?: string }> = [];

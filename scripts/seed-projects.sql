@@ -21,7 +21,8 @@ INSERT INTO projects (
   allow_iframe,
   check_type,
   check_host,
-  check_port
+  check_port,
+  status
 ) VALUES 
 (
   'proj_sodops_uz',
@@ -36,7 +37,8 @@ INSERT INTO projects (
   1,
   'http',
   'sodops.uz',
-  443
+  443,
+  'active'
 ),
 (
   'proj_mc_sodops_uz',
@@ -51,5 +53,6 @@ INSERT INTO projects (
   0,
   'minecraft',
   'mc.sodops.uz',
-  25565
+  25565,
+  'paused'
 );

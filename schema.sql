@@ -49,7 +49,8 @@ CREATE TABLE IF NOT EXISTS projects (
   screenshot_url TEXT,
   check_type TEXT NOT NULL DEFAULT 'http', -- 'http' | 'tcp' | 'minecraft'
   check_host TEXT,
-  check_port INTEGER
+  check_port INTEGER,
+  status TEXT NOT NULL DEFAULT 'active' -- 'active' | 'paused'
 );
 
 -- Uptime Checks Table

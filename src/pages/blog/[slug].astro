@@ -194,7 +194,7 @@ const schemaOrgArticle = {
           aria-label="Table of contents"
           class="p-4 rounded-md border border-neutral-200/60 dark:border-neutral-800/60 bg-neutral-100/50 dark:bg-neutral-900/30 text-xs"
         >
-          <div class="font-mono uppercase tracking-wider text-neutral-400 dark:text-neutral-500 mb-2 font-semibold">
+          <div class="font-mono uppercase tracking-wider text-neutral-600 dark:text-neutral-400 mb-2 font-semibold">
             {strings.blog.tableOfContents}
           </div>
           <ul class="space-y-1.5">
@@ -267,10 +267,10 @@ const schemaOrgArticle = {
             href={`/blog/${prevPostLink.slug}`}
             class="p-3 rounded border border-neutral-200/60 dark:border-neutral-800/60 hover:border-emerald-500/50 transition-colors group flex flex-col justify-between"
           >
-            <span class="text-[11px] font-mono text-neutral-400 dark:text-neutral-500 mb-1">
+            <span class="text-[11px] font-mono text-neutral-600 dark:text-neutral-400 mb-1">
               &larr; {strings.blog.prevPost}
             </span>
-            <span class="text-sm font-medium text-neutral-900 dark:text-neutral-100 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors line-clamp-1">
+            <span class="text-sm font-medium text-neutral-900 dark:text-neutral-100 group-hover:text-emerald-700 dark:group-hover:text-emerald-400 transition-colors line-clamp-1">
               {prevPostLink.title}
             </span>
           </a>
@@ -285,7 +285,7 @@ const schemaOrgArticle = {
             href={`/blog/${nextPostLink.slug}`}
             class="p-3 rounded border border-neutral-200/60 dark:border-neutral-800/60 hover:border-emerald-500/50 transition-colors group flex flex-col justify-between text-right sm:col-start-2"
           >
-            <span class="text-[11px] font-mono text-neutral-400 dark:text-neutral-500 mb-1">
+            <span class="text-[11px] font-mono text-neutral-600 dark:text-neutral-400 mb-1">
               {strings.blog.nextPost} &rarr;
             </span>
             <span class="text-sm font-medium text-neutral-900 dark:text-neutral-100 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors line-clamp-1">

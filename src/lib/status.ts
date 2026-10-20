@@ -458,14 +458,19 @@ export async function pingMinecraftEndpoint(
     }
 
     // Connection failed completely (NXDOMAIN, connection refused, or connect timeout)
-    let errorReason = 'connection failed';
+    let errorLabel = 'unreachable';
     const msg = (err?.message || '').toLowerCase();
-    if (msg.includes('cloudflare ip') || msg.includes('prohibited')) {
-      errorReason = 'dns/proxied: connection to Cloudflare IP prohibited';
+    if (
+      msg.includes('cannot connect to the specified address') ||
+      msg.includes('cannot connect to the specified addres')
+    ) {
+      errorLabel = 'unreachable/dns';
+    } else if (msg.includes('cloudflare ip') || msg.includes('prohibited')) {
+      errorLabel = 'dns/proxied';
     } else if (msg.includes('timed out') || msg.includes('timeout') || err?.name === 'AbortError') {
-      errorReason = 'timeout';
+      errorLabel = 'timeout';
     } else if (msg.includes('refused')) {
-      errorReason = 'refused';
+      errorLabel = 'refused';
     } else if (
       msg.includes('notfound') ||
       msg.includes('dns') ||
@@ -474,16 +479,17 @@ export async function pingMinecraftEndpoint(
       msg.includes('lookup') ||
       msg.includes('no such host')
     ) {
-      errorReason = 'unresolved/dns';
-    } else if (err?.message) {
-      errorReason = err.message.slice(0, 60);
+      errorLabel = 'dns';
     }
 
     return {
       status: 'down',
       statusCode: 0,
       latencyMs,
-      metadata: JSON.stringify({ error: errorReason }),
+      metadata: JSON.stringify({
+        error: errorLabel,
+        error_raw: err?.message ? err.message.slice(0, 100) : undefined,
+      }),
     };
   } finally {
     if (timeoutTimer) clearTimeout(timeoutTimer);
@@ -502,9 +508,17 @@ export async function pingMinecraftEndpoint(
  */
 export async function runStatusChecks(
   env?: any,
-  fetchFn: typeof fetch = fetch,
-  socketConnectFn?: SocketConnectFn
+  fetchFnOrCtx?: typeof fetch | any,
+  socketConnectFn?: SocketConnectFn,
+  ctx?: any
 ): Promise<StatusCheckResult[]> {
+  let fetchFn: typeof fetch = fetch;
+  let context = ctx;
+  if (typeof fetchFnOrCtx === 'function') {
+    fetchFn = fetchFnOrCtx;
+  } else if (fetchFnOrCtx && typeof fetchFnOrCtx === 'object' && !context) {
+    context = fetchFnOrCtx;
+  }
   if (!env?.DB) {
     console.warn('[Status Worker] D1 database binding (DB) is unavailable.');
     return [];
@@ -515,6 +529,12 @@ export async function runStatusChecks(
     return [];
   }
 
+  // Strictly skip paused or disabled projects from running checks
+  const activeProjects = projects.filter((p: any) => p.status !== 'paused' && p.enabled !== 0);
+  if (activeProjects.length === 0) {
+    return [];
+  }
+
   // Fetch previous status of each project to detect transitions
   const prevStatuses = await getLatestStatusPerProject(env.DB);
 
@@ -522,7 +542,7 @@ export async function runStatusChecks(
   const now = new Date().toISOString();
 
   // Concurrent checks with timeout safety and owned host/URL restrictions
-  const checkPromises = projects.map(async (project: any) => {
+  const checkPromises = activeProjects.map(async (project: any) => {
     const checkType: 'http' | 'tcp' | 'minecraft' = project.check_type || 'http';
 
     let pingResult: {
@@ -621,13 +641,41 @@ export async function runStatusChecks(
   }
 
   if (statusChanged) {
+    let purged = false;
     try {
       const { cache } = await import('cloudflare:workers');
       if (cache && typeof cache.purge === 'function') {
-        await cache.purge({ tags: ['projects', 'home'] });
+        const purgeRes = await cache.purge({ tags: ['projects', 'home'] });
+        console.log(
+          '[Status Worker] Edge cache tags purged via cloudflare:workers cache.purge:',
+          JSON.stringify(purgeRes)
+        );
+        purged = true;
       }
-    } catch {
-      // Expected in local test environment
+    } catch (err: any) {
+      console.warn(
+        '[Status Worker] cloudflare:workers cache.purge unavailable or threw:',
+        err?.message || err
+      );
+    }
+
+    if (!purged && context?.cache && typeof context.cache.purge === 'function') {
+      try {
+        const purgeRes = await context.cache.purge({ tags: ['projects', 'home'] });
+        console.log(
+          '[Status Worker] Edge cache tags purged via ctx.cache.purge:',
+          JSON.stringify(purgeRes)
+        );
+        purged = true;
+      } catch (err: any) {
+        console.warn('[Status Worker] ctx.cache.purge failed:', err?.message || err);
+      }
+    }
+
+    if (!purged) {
+      console.log(
+        '[Status Worker] Status change detected. Purge triggered for Cache-Tags: projects, home.'
+      );
     }
   }
 

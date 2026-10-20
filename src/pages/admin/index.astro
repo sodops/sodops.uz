@@ -7,11 +7,11 @@ import { env } from 'cloudflare:workers';
 
 export const prerender = false;
 
-const auth = await authenticateAdminRequest({
+const auth = (Astro.locals as any)?.auth || await authenticateAdminRequest({
   isDev: import.meta.env.DEV,
   host: Astro.request.headers.get('host'),
   jwtAssertion: Astro.request.headers.get('Cf-Access-Jwt-Assertion'),
-  adminEmails: env.ADMIN_EMAILS || env.ADMIN_EMAIL || 'me@sodops.uz',
+  adminEmails: env.ADMIN_EMAILS || env.ADMIN_EMAIL,
   expectedAud: env.CF_ACCESS_AUD,
   teamDomain: env.CF_ACCESS_TEAM_DOMAIN,
   devBypassAuth: env.DEV_BYPASS_AUTH === 'true' || import.meta.env.DEV,

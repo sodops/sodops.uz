@@ -11,6 +11,22 @@ export default {
    * Main HTTP request handler delegating to Astro Cloudflare handler
    */
   async fetch(request: Request, env: WorkerEnv, ctx: any): Promise<Response> {
+    const url = new URL(request.url);
+    if (url.pathname === '/__scheduled') {
+      const isLocal =
+        url.hostname === 'localhost' ||
+        url.hostname === '127.0.0.1' ||
+        import.meta.env.DEV;
+      if (isLocal) {
+        const cron = url.searchParams.get('cron') || '*/5 * * * *';
+        const scheduledTime = Date.now();
+        await this.scheduled({ cron, scheduledTime }, env, ctx);
+        return new Response('Ran scheduled event\n', {
+          status: 200,
+          headers: { 'Content-Type': 'text/plain' },
+        });
+      }
+    }
     return handle(request, env, ctx);
   },
 
@@ -22,7 +38,7 @@ export default {
     const scheduledAt = new Date(controller.scheduledTime).toISOString();
     console.log(`[Worker Scheduled Cron] Fired at ${scheduledAt} (cron: ${controller.cron})`);
     ctx.waitUntil(
-      runStatusChecks(env)
+      runStatusChecks(env, ctx)
         .then((results) => {
           console.log(
             `[Worker Scheduled Cron] Completed status checks for ${results.length} endpoints:`,

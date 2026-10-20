@@ -96,7 +96,7 @@ function formatDate(date: Date): string {
       allTags.length > 0 && (
         <section aria-label="Filter by tag" class="pt-1">
           <div class="flex flex-wrap items-center gap-1.5 text-xs font-mono">
-            <span class="text-neutral-400 dark:text-neutral-500 mr-1">Tags:</span>
+            <span class="text-neutral-600 dark:text-neutral-400 mr-1">Tags:</span>
             <a
               href="/blog"
               class:list={[
@@ -168,7 +168,7 @@ function formatDate(date: Date): string {
                   >
                     {post.title}
                   </a>
-                  <div class="flex items-center gap-2 shrink-0 text-xs font-mono text-neutral-400 dark:text-neutral-500">
+                  <div class="flex items-center gap-2 shrink-0 text-xs font-mono text-neutral-600 dark:text-neutral-400">
                     <time datetime={post.published_at.toISOString()}>
                       {formatDate(post.published_at)}
                     </time>

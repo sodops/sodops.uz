@@ -12,6 +12,9 @@ export default defineConfig({
   integrations: [preact()],
   vite: {
     plugins: [tailwindcss()],
+    build: {
+      assetsInlineLimit: 0,
+    },
   },
   markdown: {
     shikiConfig: {

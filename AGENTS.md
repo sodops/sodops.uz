@@ -28,7 +28,7 @@ npx wrangler dev  # Local Cloudflare emulation (D1, R2, KV, crons)
 Create `.dev.vars` (git-ignored) for local secrets:
 
 ```
-ADMIN_EMAIL=me@sodops.uz
+ADMIN_EMAILS=admin@example.com
 CF_ACCESS_AUD=<your-access-aud-claim>
 ```
 

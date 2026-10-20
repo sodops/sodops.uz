@@ -15,19 +15,24 @@ Astro.cache.set({
 
 const projects = env?.DB ? await getProjectsWithStatus(env.DB) : [];
 
-// Compute platform-wide status metrics
-const totalServices = projects.length;
-const downServices = projects.filter((p) => p.current_status === 'down').length;
-const degradedServices = projects.filter((p) => p.current_status === 'degraded').length;
+// Compute platform-wide status metrics (exclude paused/disabled projects)
+const activeProjects = projects.filter(
+  (p) => p.status !== 'paused' && p.current_status !== 'paused' && (p as any).enabled !== 0
+);
+const totalServices = activeProjects.length;
+const downServices = activeProjects.filter((p) => p.current_status === 'down').length;
+const degradedServices = activeProjects.filter((p) => p.current_status === 'degraded').length;
 
 const overallStatus =
   downServices > 0 ? 'down' : degradedServices > 0 ? 'degraded' : 'up';
 
-const projectsWithHistory = projects.filter((p) => p.has_history);
+const projectsWithHistory = activeProjects.filter(
+  (p) => p.has_history && p.uptime_percentage_30d !== null
+);
 const avgUptime =
   projectsWithHistory.length > 0
     ? (
-        projectsWithHistory.reduce((acc, p) => acc + p.uptime_percentage_30d, 0) /
+        projectsWithHistory.reduce((acc, p) => acc + (p.uptime_percentage_30d ?? 0), 0) /
         projectsWithHistory.length
       ).toFixed(2)
     : null;
@@ -89,7 +94,7 @@ const avgUptime =
           </span>
         </div>
 
-        <div class="flex items-center gap-4 text-xs font-mono text-neutral-500 dark:text-neutral-400">
+        <div class="flex items-center gap-4 text-xs font-mono text-neutral-600 dark:text-neutral-400">
           <span>{totalServices} Monitored Endpoints</span>
           <span>&middot;</span>
           <span>{avgUptime ? `${avgUptime}% Avg 30-Day Uptime` : 'Awaiting Initial Checks'}</span>
@@ -119,7 +124,9 @@ const avgUptime =
                           ? 'bg-amber-100 text-amber-800 dark:bg-amber-950/80 dark:text-amber-300'
                           : project.current_status === 'down'
                             ? 'bg-red-100 text-red-800 dark:bg-red-950/80 dark:text-red-300'
-                            : 'bg-neutral-200 text-neutral-700 dark:bg-neutral-800 dark:text-neutral-400',
+                            : project.current_status === 'paused'
+                              ? 'bg-neutral-100 text-neutral-700 dark:bg-neutral-800 dark:text-neutral-300'
+                              : 'bg-neutral-200 text-neutral-700 dark:bg-neutral-800 dark:text-neutral-400',
                     ]}
                   >
                     <span
@@ -140,7 +147,9 @@ const avgUptime =
                         ? strings.projects.statusDegraded
                         : project.current_status === 'down'
                           ? strings.projects.statusDown
-                          : 'No data yet'}
+                          : project.current_status === 'paused'
+                            ? 'Coming soon'
+                            : 'No data yet'}
                   </span>
 
                   <h2 class="text-base font-semibold text-neutral-900 dark:text-neutral-100 font-sans">
@@ -148,7 +157,8 @@ const avgUptime =
                       href={project.url}
                       target="_blank"
                       rel="noopener noreferrer"
-                      class="hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors inline-flex items-center gap-1"
+                      aria-label={`Visit ${project.name}`}
+                      class="hover:text-emerald-700 dark:hover:text-emerald-400 transition-colors inline-flex items-center gap-1"
                     >
                       {project.name}
                       <svg
@@ -157,6 +167,7 @@ const avgUptime =
                         stroke="currentColor"
                         viewBox="0 0 24 24"
                         stroke-width="2"
+                        aria-hidden="true"
                       >
                         <path
                           stroke-linecap="round"
@@ -168,22 +179,30 @@ const avgUptime =
                   </h2>
                 </div>
 
-                <div class="flex items-center gap-3 text-xs font-mono text-neutral-500 dark:text-neutral-400">
-                  {project.latest_latency_ms !== null && (
-                    <span>
-                      {strings.projects.latency}:{' '}
-                      <span class="text-neutral-800 dark:text-neutral-200 font-medium">
-                        {project.latest_latency_ms}ms
+                <div class="flex items-center gap-3 text-xs font-mono text-neutral-600 dark:text-neutral-400">
+                  {project.current_status === 'paused' ? (
+                    <span>Status: Coming soon</span>
+                  ) : (
+                    <>
+                      {project.latest_latency_ms !== null && (
+                        <span>
+                          {strings.projects.latency}:{' '}
+                          <span class="text-neutral-900 dark:text-neutral-100 font-medium">
+                            {project.latest_latency_ms}ms
+                          </span>
+                        </span>
+                      )}
+                      {project.latest_latency_ms !== null && <span>&middot;</span>}
+                      <span>
+                        {strings.projects.uptime30d}:{' '}
+                        <span class="text-emerald-700 dark:text-emerald-400 font-medium">
+                          {project.has_history && project.uptime_percentage_30d !== null
+                            ? `${project.uptime_percentage_30d}%`
+                            : 'No data yet'}
+                        </span>
                       </span>
-                    </span>
+                    </>
                   )}
-                  {project.latest_latency_ms !== null && <span>&middot;</span>}
-                  <span>
-                    {strings.projects.uptime30d}:{' '}
-                    <span class="text-emerald-600 dark:text-emerald-400 font-medium">
-                      {project.has_history ? `${project.uptime_percentage_30d}%` : 'No data yet'}
-                    </span>
-                  </span>
                   {project.repo_url && (
                     <>
                       <span>&middot;</span>
@@ -191,8 +210,9 @@ const avgUptime =
                         href={project.repo_url}
                         target="_blank"
                         rel="noopener noreferrer"
-                        class="hover:text-neutral-800 dark:hover:text-neutral-200 transition-colors"
+                        class="hover:text-neutral-900 dark:hover:text-neutral-100 transition-colors"
                         title={strings.projects.viewSource}
+                        aria-label={`View source code for ${project.name}`}
                       >
                         Source &rarr;
                       </a>
@@ -208,20 +228,20 @@ const avgUptime =
 
               {/* Minecraft or Protocol Metadata Badge */}
               {(() => {
-                if (!project.latest_metadata) return null;
+                if (project.current_status === 'paused' || !project.latest_metadata) return null;
                 try {
                   const meta = JSON.parse(project.latest_metadata);
                   if (project.check_type === 'minecraft') {
                     if (meta.error) {
                       return (
-                        <div class="flex items-center gap-2 text-[11px] font-mono text-red-700 dark:text-red-400 bg-red-50 dark:bg-red-950/40 px-2.5 py-1 rounded border border-red-200/60 dark:border-red-900/50 w-fit">
-                          <span>Check error: {meta.error}</span>
+                        <div class="flex items-center gap-2 text-[11px] font-mono text-neutral-700 dark:text-neutral-300 bg-neutral-100 dark:bg-neutral-800/60 px-2.5 py-1 rounded border border-neutral-200/60 dark:border-neutral-700/60 w-fit">
+                          <span>Status: {meta.error}</span>
                         </div>
                       );
                     }
                     return (
-                      <div class="flex items-center gap-2 text-[11px] font-mono text-neutral-600 dark:text-neutral-400 bg-neutral-100/80 dark:bg-neutral-800/60 px-2.5 py-1 rounded border border-neutral-200/50 dark:border-neutral-700/50 w-fit">
-                        <span class="text-emerald-600 dark:text-emerald-400 font-semibold">
+                      <div class="flex items-center gap-2 text-[11px] font-mono text-neutral-700 dark:text-neutral-300 bg-neutral-100/80 dark:bg-neutral-800/60 px-2.5 py-1 rounded border border-neutral-200/50 dark:border-neutral-700/50 w-fit">
+                        <span class="text-emerald-700 dark:text-emerald-400 font-semibold">
                           online &middot; {meta.players_online ?? 0}/{meta.players_max ?? 0} &middot; {meta.version || 'Minecraft'}
                         </span>
                       </div>
@@ -236,7 +256,7 @@ const avgUptime =
               {/* Tech Tags */}
               <div class="flex flex-wrap gap-1.5 pt-1">
                 {project.tech_tags.map((tag) => (
-                  <span class="text-[11px] font-mono px-2 py-0.5 rounded bg-neutral-100 dark:bg-neutral-800/80 text-neutral-600 dark:text-neutral-400 border border-neutral-200/60 dark:border-neutral-700/60">
+                  <span class="text-[11px] font-mono px-2 py-0.5 rounded bg-neutral-100 dark:bg-neutral-800/80 text-neutral-700 dark:text-neutral-300 border border-neutral-200/60 dark:border-neutral-700/60">
                     {tag}
                   </span>
                 ))}
@@ -244,7 +264,12 @@ const avgUptime =
 
               {/* 30-Day Uptime Bar Graph */}
               <div class="pt-3 border-t border-neutral-200/60 dark:border-neutral-800/60 space-y-1.5">
-                {project.has_history ? (
+                {project.current_status === 'paused' ? (
+                  <div class="py-2.5 px-3 rounded bg-neutral-100/60 dark:bg-neutral-800/40 text-[11px] font-mono text-neutral-600 dark:text-neutral-400 flex items-center justify-between">
+                    <span>Status: Coming soon</span>
+                    <span class="text-[10px] text-neutral-600 dark:text-neutral-400">Scheduled checks paused</span>
+                  </div>
+                ) : project.has_history ? (
                   <>
                     <div class="flex items-center gap-[3px] h-6 w-full" aria-label="30-day uptime bars">
                       {project.uptime_history_30d.map((day) => (
@@ -268,16 +293,16 @@ const avgUptime =
                       ))}
                     </div>
 
-                    <div class="flex items-center justify-between text-[10px] font-mono text-neutral-400 dark:text-neutral-500">
+                    <div class="flex items-center justify-between text-[10px] font-mono text-neutral-600 dark:text-neutral-400">
                       <span>30 days ago</span>
                       <span>Checked every 5m via Cloudflare Cron</span>
                       <span>Today</span>
                     </div>
                   </>
                 ) : (
-                  <div class="py-2.5 px-3 rounded bg-neutral-100/60 dark:bg-neutral-800/40 text-[11px] font-mono text-neutral-500 dark:text-neutral-400 flex items-center justify-between">
+                  <div class="py-2.5 px-3 rounded bg-neutral-100/60 dark:bg-neutral-800/40 text-[11px] font-mono text-neutral-600 dark:text-neutral-400 flex items-center justify-between">
                     <span>Uptime history: No data yet</span>
-                    <span class="text-[10px] text-neutral-400">Awaiting scheduled cron checks</span>
+                    <span class="text-[10px] text-neutral-600 dark:text-neutral-400">Awaiting scheduled cron checks</span>
                   </div>
                 )}
               </div>
@@ -289,12 +314,12 @@ const avgUptime =
 
     <!-- Architecture Explanation Callout -->
     <footer class="pt-6 border-t border-neutral-200/60 dark:border-neutral-800/60">
-      <div class="p-4 rounded border border-neutral-200/60 dark:border-neutral-800/60 bg-neutral-100/40 dark:bg-neutral-900/20 text-xs text-neutral-500 dark:text-neutral-400 leading-relaxed space-y-1 font-mono">
-        <div class="font-semibold text-neutral-700 dark:text-neutral-300">
+      <div class="p-4 rounded border border-neutral-200/60 dark:border-neutral-800/60 bg-neutral-100/40 dark:bg-neutral-900/20 text-xs text-neutral-700 dark:text-neutral-300 leading-relaxed space-y-1 font-mono">
+        <div class="font-semibold text-neutral-800 dark:text-neutral-200">
           How this monitoring works:
         </div>
         <p>
-          Status checks run automatically every 5 minutes in a Cloudflare Worker via Cron Triggers (<code class="text-[11px]">*/5 * * * *</code>). Pings are dispatched concurrently to project health targets, and round-trip latencies are stored in Cloudflare D1. Public pages serve edge-cached aggregated metrics with zero runtime overhead.
+          Status checks run automatically every 5 minutes in a Cloudflare Worker via Cron Triggers (<code class="text-[11px] text-neutral-800 dark:text-neutral-200">*/5 * * * *</code>). Pings are dispatched concurrently to project health targets, and round-trip latencies are stored in Cloudflare D1. Public pages serve edge-cached aggregated metrics with zero runtime overhead.
         </p>
       </div>
     </footer>
