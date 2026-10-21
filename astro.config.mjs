@@ -5,11 +5,72 @@ import preact from '@astrojs/preact';
 import tailwindcss from '@tailwindcss/vite';
 import { cacheCloudflare } from '@astrojs/cloudflare/cache';
 
+import fs from 'node:fs';
+import path from 'node:path';
+
+function checkPublicSafetyGuards() {
+  // Check both process.env and wrangler.jsonc for SITE_INDEXING
+  let isIndexingOn = (process.env.SITE_INDEXING || '').toLowerCase() === 'on';
+  try {
+    const wranglerConfig = fs.readFileSync(path.resolve('wrangler.jsonc'), 'utf-8');
+    if (/"SITE_INDEXING"\s*:\s*"on"/i.test(wranglerConfig)) {
+      isIndexingOn = true;
+    }
+  } catch {}
+
+  if (!isIndexingOn) return;
+
+  const targets = [
+    'public/.well-known/security.txt',
+    'src/pages/index.astro',
+    'src/pages/uses.astro',
+    'src/pages/now.astro',
+    'src/pages/projects.astro',
+    'src/pages/404.astro',
+    'src/pages/blog/index.astro',
+    'src/pages/blog/[slug].astro',
+  ];
+
+  /** @type {Array<{ file: string; line: number; text: string }>} */
+  const violations = [];
+  for (const relPath of targets) {
+    const fullPath = path.resolve(relPath);
+    if (!fs.existsSync(fullPath)) continue;
+    const content = fs.readFileSync(fullPath, 'utf-8');
+    const lines = content.split('\n');
+    lines.forEach((line, idx) => {
+      if (line.includes('TODO(sodiq)')) {
+        violations.push({ file: relPath, line: idx + 1, text: line.trim() });
+      }
+    });
+  }
+
+  if (violations.length > 0) {
+    const details = violations.map((v) => `  - ${v.file}:${v.line} -> ${v.text}`).join('\n');
+    throw new Error(
+      `\n\n[FATAL SAFETY GUARD] Production build aborted!\n` +
+      `SITE_INDEXING is set to 'on', but ${violations.length} unresolved TODO(sodiq) placeholder(s) were found:\n` +
+      `${details}\n\n` +
+      `You must finalize all personal copy and RFC 9116 security.txt Contact before launching search indexing.\n`
+    );
+  }
+}
+
 export default defineConfig({
   site: 'https://sodops.uz',
   output: 'server',
   adapter: cloudflare(),
-  integrations: [preact()],
+  integrations: [
+    preact(),
+    {
+      name: 'site-indexing-safety',
+      hooks: {
+        'astro:config:setup': () => {
+          checkPublicSafetyGuards();
+        },
+      },
+    },
+  ],
   vite: {
     plugins: [tailwindcss()],
     build: {

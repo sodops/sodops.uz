@@ -93,13 +93,16 @@ export function isAdminPath(pathname: string): boolean {
 
 // In-memory cache for imported JWKS CryptoKey instances across Worker requests
 const jwksKeyCache = new Map<string, { key: CryptoKey; cachedAt: number }>();
+const jwksFetchTimestamps = new Map<string, number>();
 const CACHE_TTL_MS = 60 * 60 * 1000; // 1 hour TTL
+export const JWKS_REFETCH_THROTTLE_MS = 60 * 1000; // 60 seconds refetch throttle for unknown kid
 
 /**
  * Clears the JWKS key cache (primarily for unit testing)
  */
 export function clearJwksCache(): void {
   jwksKeyCache.clear();
+  jwksFetchTimestamps.clear();
 }
 
 /**
@@ -197,8 +200,17 @@ export async function getAccessPublicKey(
     return cached.key;
   }
 
+  // Throttle JWKS refetches for unknown kid:
+  // If we fetched keys for this domain recently and the requested kid wasn't cached,
+  // do not hammer the Cloudflare certs endpoint on every unknown-kid request.
+  const lastFetch = jwksFetchTimestamps.get(normalizedDomain) || 0;
+  if (now - lastFetch < JWKS_REFETCH_THROTTLE_MS) {
+    return null;
+  }
+
   try {
     const certsUrl = `https://${normalizedDomain}/cdn-cgi/access/certs`;
+    jwksFetchTimestamps.set(normalizedDomain, now);
     const res = await fetchFn(certsUrl);
     if (!res.ok) {
       return null;
@@ -208,22 +220,31 @@ export async function getAccessPublicKey(
       return null;
     }
 
-    const jwk = kid
-      ? data.keys.find((k: any) => k.kid === kid)
-      : data.keys[0];
+    // Cache all imported keys from the JWKS response
+    let targetKey: CryptoKey | null = null;
+    for (let i = 0; i < data.keys.length; i++) {
+      const k = data.keys[i];
+      try {
+        const cryptoKey = await crypto.subtle.importKey(
+          'jwk',
+          k,
+          { name: 'RSASSA-PKCS1-v1_5', hash: 'SHA-256' },
+          false,
+          ['verify']
+        );
+        if (k.kid) {
+          jwksKeyCache.set(`${normalizedDomain}:${k.kid}`, { key: cryptoKey, cachedAt: now });
+        }
+        if (i === 0) {
+          jwksKeyCache.set(`${normalizedDomain}:default`, { key: cryptoKey, cachedAt: now });
+        }
+        if ((kid && k.kid === kid) || (!kid && i === 0)) {
+          targetKey = cryptoKey;
+        }
+      } catch {}
+    }
 
-    if (!jwk) return null;
-
-    const cryptoKey = await crypto.subtle.importKey(
-      'jwk',
-      jwk,
-      { name: 'RSASSA-PKCS1-v1_5', hash: 'SHA-256' },
-      false,
-      ['verify']
-    );
-
-    jwksKeyCache.set(cacheKey, { key: cryptoKey, cachedAt: now });
-    return cryptoKey;
+    return targetKey;
   } catch {
     return null;
   }
