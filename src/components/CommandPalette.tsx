@@ -277,28 +277,42 @@ export default function CommandPalette() {
           ) : (
             filteredItems.map((item, index) => {
               const isSelected = index === selectedIndex;
+              const prevType = index > 0 ? filteredItems[index - 1].type : null;
+              const showGroupHeader = item.type !== prevType;
+              const groupLabel =
+                item.type === 'action'
+                  ? 'Quick Actions'
+                  : item.type === 'post'
+                    ? 'Articles & Posts'
+                    : 'Navigation & Pages';
+
               return (
-                <div
-                  key={`${item.type}-${item.title}-${index}`}
-                  id={`palette-option-${index}`}
-                  data-index={index}
-                  role="option"
-                  aria-selected={isSelected}
-                  onClick={() => {
-                    if (item.action) {
-                      item.action();
-                    } else if (item.url) {
-                      window.location.href = item.url;
-                      setIsOpen(false);
-                    }
-                  }}
-                  onMouseEnter={() => setSelectedIndex(index)}
-                  class={`flex items-center justify-between px-3 py-2.5 rounded-lg cursor-pointer transition-colors text-xs font-sans ${
-                    isSelected
-                      ? 'bg-emerald-500/10 dark:bg-emerald-500/20 text-emerald-800 dark:text-emerald-300 border-l-2 border-emerald-500'
-                      : 'hover:bg-neutral-100 dark:hover:bg-neutral-800/60 text-neutral-700 dark:text-neutral-300'
-                  }`}
-                >
+                <div key={`${item.type}-${item.title}-${index}`}>
+                  {showGroupHeader && (
+                    <div class="px-3 pt-2.5 pb-1 text-[10px] font-mono uppercase tracking-wider text-neutral-400 dark:text-neutral-500 font-semibold select-none">
+                      {groupLabel}
+                    </div>
+                  )}
+                  <div
+                    id={`palette-option-${index}`}
+                    data-index={index}
+                    role="option"
+                    aria-selected={isSelected}
+                    onClick={() => {
+                      if (item.action) {
+                        item.action();
+                      } else if (item.url) {
+                        window.location.href = item.url;
+                        setIsOpen(false);
+                      }
+                    }}
+                    onMouseEnter={() => setSelectedIndex(index)}
+                    class={`flex items-center justify-between px-3 py-2.5 rounded-lg cursor-pointer transition-colors text-xs font-sans ${
+                      isSelected
+                        ? 'bg-emerald-500/10 dark:bg-emerald-500/20 text-emerald-800 dark:text-emerald-300 border-l-2 border-emerald-500'
+                        : 'hover:bg-neutral-100 dark:hover:bg-neutral-800/60 text-neutral-700 dark:text-neutral-300'
+                    }`}
+                  >
                   <div class="flex items-center gap-2.5 truncate">
                     <span
                       class={`text-[10px] font-mono uppercase px-1.5 py-0.5 rounded shrink-0 ${
@@ -328,8 +342,9 @@ export default function CommandPalette() {
                     {isSelected && <span class="text-emerald-600 dark:text-emerald-400">&crarr;</span>}
                   </div>
                 </div>
-              );
-            })
+              </div>
+            );
+          })
           )}
         </div>
 

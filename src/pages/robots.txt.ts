@@ -1,5 +1,6 @@
 import type { APIRoute } from 'astro';
 import { env } from 'cloudflare:workers';
+import { generateRobotsTxt } from '../lib/sitemap-utils';
 
 export const prerender = false;
 
@@ -16,14 +17,9 @@ export const GET: APIRoute = async ({ locals }) => {
     (locals as any)?.runtime?.env?.SITE_URL ||
     import.meta.env.SITE_URL ||
     'https://sodops.uz'
-  ).replace(/\/$/, '');
+  );
 
-  let body = '';
-  if (siteIndexing !== 'on') {
-    body = 'User-agent: *\nDisallow: /\n';
-  } else {
-    body = `User-agent: *\nAllow: /\nDisallow: /admin/\nDisallow: /api/admin/\n\nSitemap: ${siteUrl}/sitemap.xml\n`;
-  }
+  const body = generateRobotsTxt(siteIndexing, siteUrl);
 
   return new Response(body, {
     headers: {

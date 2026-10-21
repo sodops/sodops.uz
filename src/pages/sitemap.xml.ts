@@ -1,6 +1,7 @@
 import type { APIRoute } from 'astro';
 import { getPublishedPosts } from '../lib/db';
 import { getCollection } from 'astro:content';
+import { generateSitemapXml } from '../lib/sitemap-utils';
 
 export const prerender = false;
 
@@ -55,28 +56,9 @@ export const GET: APIRoute = async ({ locals }) => {
     { loc: `${baseUrl}/now`, priority: '0.5' },
   ];
 
-  const sitemapXml = `<?xml version="1.0" encoding="UTF-8"?>
-<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-${staticPages
-  .map(
-    (page) => `  <url>
-    <loc>${page.loc}</loc>
-    <priority>${page.priority}</priority>
-  </url>`
-  )
-  .join('\n')}
-${postUrls
-  .map(
-    (post) => `  <url>
-    <loc>${post.loc}</loc>
-    ${post.lastmod ? `<lastmod>${post.lastmod}</lastmod>` : ''}
-    <priority>0.7</priority>
-  </url>`
-  )
-  .join('\n')}
-</urlset>`;
+  const sitemapXml = generateSitemapXml(staticPages, postUrls);
 
-  return new Response(sitemapXml.trim(), {
+  return new Response(sitemapXml, {
     headers: {
       'Content-Type': 'application/xml; charset=utf-8',
       'Cache-Control': 'public, max-age=0, s-maxage=3600, stale-while-revalidate=86400',
