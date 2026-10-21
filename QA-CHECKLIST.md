@@ -80,10 +80,18 @@ The admin path `/admin` and API routes `/api/admin/*` are strictly guarded. Test
   - Retrieve the 6-digit PIN from your inbox and enter it.
   - **Expected**: Successful redirect back to `https://sodops.uz/admin`.
   - Inspect developer tools Cookies: `CF_Authorization` cookie must be present with `HttpOnly; Secure; SameSite=Lax`.
-- [ ] **Admin Dashboard Verification**:
-  - Verify the Post Editor loads.
-  - Create a new draft post and save it: confirm no 401 or CSRF errors occur.
-  - Navigate to status checks and cache purge controls: verify actions execute cleanly.
+- [ ] **Admin Dashboard & Editor Features**:
+  - Open `/admin` and click **+ New Post**.
+  - Type a title with Uzbek characters: `O‘zbekiston texnologiyalari ва Тошкент`.
+  - **Expected**: Auto-generated slug becomes `ozbekiston-texnologiyalari-va-toshkent`.
+  - Type some text into the content textarea:
+  - **Expected**: `#word-count-badge` updates in real time with word count and estimated reading time.
+  - Refresh or close the page without saving:
+  - **Expected**: Browser prompts an unsaved changes warning dialog (`beforeunload`).
+  - Reload anyway, then click **+ New Post**:
+  - **Expected**: Alert banner announces *"Restored unsaved draft from your browser"* and populates the saved content.
+  - Save or delete the post:
+  - **Expected**: Local draft is cleared and edge cache tags (`blog`, `home`, `post:slug`) are purged.
 - [ ] **Unauthorized Rejection**:
   - Try logging in with an email NOT present in `ADMIN_EMAILS`.
   - **Expected**: Cloudflare Access denies access, or the application renders a clean 401 Unauthorized page (with no internal error leakage).

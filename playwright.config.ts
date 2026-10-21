@@ -4,6 +4,8 @@ export default defineConfig({
   testDir: './tests',
   timeout: 30000,
   retries: 0,
+  fullyParallel: true,
+  workers: 8,
   use: {
     baseURL: process.env.E2E_BASE_URL || 'http://localhost:4321',
     trace: 'on-first-retry',

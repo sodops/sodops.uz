@@ -58,9 +58,31 @@ async function main() {
   // 1. Static Analysis
   runStep('1. TypeScript / Astro Typecheck', 'pnpm typecheck', 'typecheck.log');
   runStep('2. ESLint Code Quality', 'pnpm lint', 'lint.log');
-  runStep('3. Unit Tests & Hostile Sanitization', 'pnpm test', 'unit-tests.log');
+  runStep('3. Unit Tests Core Suite (205 tests)', 'pnpm test', 'unit-tests.log');
   runStep('4. Supply Chain Security Audit', 'pnpm audit --prod', 'audit.log');
   runStep('5. Build & CSP Script Hash Verification', 'pnpm build', 'build.log');
+
+  // Specific Deep Audits (A5, A6, A7, Cache Semantics)
+  runStep(
+    'A5. Admin Local QA & Post Lifecycle (Draft, Publish, Edit, Delete, Uzbek/Cyrillic Slugs, 10k Word Benchmark)',
+    'npx tsx --test src/lib/admin-qa.test.ts src/lib/admin-lifecycle.test.ts',
+    'admin-qa.log'
+  );
+  runStep(
+    'A6. Security Fuzz (JWT Edge Cases, Throttled JWKS Refetch, SSRF & IP Allowlist Matrix)',
+    'npx tsx --test src/lib/security-fuzz.test.ts',
+    'security-fuzz.log'
+  );
+  runStep(
+    'A7. Content & SEO Hierarchy Audit (Sitemap XML, Robots.txt, Single H1, OG/Twitter Metadata, Safety Guard)',
+    'npx tsx --test src/lib/content-seo.test.ts src/lib/safety.test.ts',
+    'content-seo.log'
+  );
+  runStep(
+    'Cache Semantics. Edge Invalidation & CDN Purge Lifecycle (blog, home, post:slug tags)',
+    'npx tsx --test src/lib/admin-lifecycle.test.ts',
+    'cache-semantics.log'
+  );
 
   // 2. Worker Bundle Size Check
   process.stdout.write('⏳ Running 6. Worker Bundle Size Check (< 1 MB)... ');
@@ -213,6 +235,39 @@ async function main() {
     'lighthouse.log'
   );
 
+  // Compute and log per-page medians for all 4 categories
+  try {
+    const lhciFiles = fs.readdirSync('.lighthouseci').filter((f) => f.startsWith('lhr-') && f.endsWith('.json'));
+    const byUrl = {};
+    for (const f of lhciFiles) {
+      const data = JSON.parse(fs.readFileSync(path.join('.lighthouseci', f), 'utf-8'));
+      const url = data.requestedUrl;
+      if (!byUrl[url]) byUrl[url] = [];
+      byUrl[url].push({
+        perf: Math.round(data.categories.performance.score * 100),
+        a11y: Math.round(data.categories.accessibility.score * 100),
+        bp: Math.round(data.categories['best-practices'].score * 100),
+        seo: Math.round(data.categories.seo.score * 100),
+      });
+    }
+    const medians = {};
+    for (const [u, runs] of Object.entries(byUrl)) {
+      const getMedian = (arr) => {
+        arr.sort((a, b) => a - b);
+        return arr[Math.floor(arr.length / 2)];
+      };
+      medians[u] = {
+        performance: getMedian(runs.map((r) => r.perf)),
+        accessibility: getMedian(runs.map((r) => r.a11y)),
+        bestPractices: getMedian(runs.map((r) => r.bp)),
+        seo: getMedian(runs.map((r) => r.seo)),
+      };
+    }
+    fs.writeFileSync(path.join(LOGS_DIR, 'lighthouse-medians.log'), JSON.stringify(medians, null, 2));
+  } catch (err) {
+    fs.writeFileSync(path.join(LOGS_DIR, 'lighthouse-medians.log'), `Error: ${err.message}`);
+  }
+
   // Write Master JSON summary
   const summaryJsonPath = path.join(REPORT_DIR, 'summary.json');
   fs.writeFileSync(summaryJsonPath, JSON.stringify(suiteResults, null, 2));
@@ -234,6 +289,11 @@ async function main() {
   }
   console.log('========================================================================\n');
   console.log(`Summary report written to: ${summaryJsonPath}\n`);
+
+  // Teardown: Stop Preview Server
+  try {
+    execSync('npx astro preview stop 2>/dev/null || true');
+  } catch {}
 
   const hasFails = suiteResults.some((r) => r.status === 'FAIL');
   process.exit(hasFails ? 1 : 0);
