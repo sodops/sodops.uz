@@ -12,8 +12,8 @@ importers:
   .:
     dependencies:
       '@astrojs/cloudflare':
-        specifier: ^14.4.0
-        version: 14.4.0(@types/node@22.20.5)(astro@7.4.0(@types/node@22.20.5)(esbuild@0.28.2)(jiti@2.7.0)(yaml@2.9.1))(esbuild@0.28.2)(jiti@2.7.0)(wrangler@4.151.1(@cloudflare/workers-types@5.20261018.1)(@types/node@22.20.5))(yaml@2.9.1)
+        specifier: ^14.4.2
+        version: 14.4.2(@types/node@22.20.5)(astro@7.4.0(@types/node@22.20.5)(esbuild@0.28.2)(jiti@2.7.0)(yaml@2.9.1))(esbuild@0.28.2)(jiti@2.7.0)(wrangler@4.151.1(@cloudflare/workers-types@5.20261018.1)(@types/node@22.20.5))(yaml@2.9.1)
       '@astrojs/preact':
         specifier: ^6.1.0
         version: 6.1.0(@babel/core@7.29.7(supports-color@10.2.2))(@types/node@22.20.5)(esbuild@0.28.2)(jiti@2.7.0)(preact@11.0.1)(supports-color@10.2.2)(yaml@2.9.1)
@@ -121,8 +121,8 @@ packages:
     peerDependencies:
       typescript: ^5.0.0 || ^6.0.0
 
-  '@astrojs/cloudflare@14.4.0':
-    resolution: {integrity: sha512-too29zA8tmRv4mvcwDPBfGTelOS1uUxh2y7oPT1AiULzZrwrEkNOf1v1IwJvEjO2VIDtArFYxA1c5WD7OMfU+Q==}
+  '@astrojs/cloudflare@14.4.2':
+    resolution: {integrity: sha512-h5xklg48p4lW0yBB0Wr5zyu18rpmraObNb7EXynZGUEHVMobyXHhcOLlmxQNG03K98V1bzL5XfZwvux42uWu9A==}
     peerDependencies:
       astro: ^7.4.0
       wrangler: ^4.125.0
@@ -3238,13 +3238,14 @@ snapshots:
       - prettier
       - prettier-plugin-astro
 
-  '@astrojs/cloudflare@14.4.0(@types/node@22.20.5)(astro@7.4.0(@types/node@22.20.5)(esbuild@0.28.2)(jiti@2.7.0)(yaml@2.9.1))(esbuild@0.28.2)(jiti@2.7.0)(wrangler@4.151.1(@cloudflare/workers-types@5.20261018.1)(@types/node@22.20.5))(yaml@2.9.1)':
+  '@astrojs/cloudflare@14.4.2(@types/node@22.20.5)(astro@7.4.0(@types/node@22.20.5)(esbuild@0.28.2)(jiti@2.7.0)(yaml@2.9.1))(esbuild@0.28.2)(jiti@2.7.0)(wrangler@4.151.1(@cloudflare/workers-types@5.20261018.1)(@types/node@22.20.5))(yaml@2.9.1)':
     dependencies:
       '@astrojs/internal-helpers': 0.13.0
       '@astrojs/underscore-redirects': 1.0.4
       '@cloudflare/vite-plugin': 1.64.0(@types/node@22.20.5)(vite@8.3.4(@types/node@22.20.5)(esbuild@0.28.2)(jiti@2.7.0)(yaml@2.9.1))(wrangler@4.151.1(@cloudflare/workers-types@5.20261018.1)(@types/node@22.20.5))
       astro: 7.4.0(@types/node@22.20.5)(esbuild@0.28.2)(jiti@2.7.0)(yaml@2.9.1)
       piccolore: 0.1.3
+      prismjs: 1.30.0
       vite: 8.3.4(@types/node@22.20.5)(esbuild@0.28.2)(jiti@2.7.0)(yaml@2.9.1)
       wrangler: 4.151.1(@cloudflare/workers-types@5.20261018.1)(@types/node@22.20.5)
     transitivePeerDependencies:
