@@ -1,4 +1,5 @@
 import { calculateReadingTimeMinutes } from './markdown-utils';
+import { classifyMonitoringStatus } from './monitoring-state';
 
 type D1Database = import('@cloudflare/workers-types').D1Database;
 
@@ -452,11 +453,11 @@ export async function getProjectsWithStatus(
     const has_history = totalChecks > 0;
     const uptime_percentage_30d = has_history
       ? Number(((upChecks / totalChecks) * 100).toFixed(2))
-      : 100;
+      : null;
 
     return {
       ...p,
-      current_status: (latest?.status as any) || 'unknown',
+      current_status: classifyMonitoringStatus(latest?.status as string | undefined, latest?.timestamp as string | undefined),
       latest_latency_ms: latest ? Number(latest.latency_ms) : null,
       latest_check_at: (latest?.timestamp as string) || null,
       latest_metadata: (latest?.metadata as string) || null,
@@ -519,11 +520,11 @@ export async function getFeaturedProjects(
     const latest = latestMap.get(p.id);
     return {
       ...p,
-      current_status: (latest?.status as any) || 'unknown',
+      current_status: classifyMonitoringStatus(latest?.status as string | undefined, latest?.timestamp as string | undefined),
       latest_latency_ms: latest ? Number(latest.latency_ms) : null,
       latest_check_at: (latest?.timestamp as string) || null,
       latest_metadata: (latest?.metadata as string) || null,
-      uptime_percentage_30d: 100,
+      uptime_percentage_30d: null,
       uptime_history_30d: [],
       has_history: false,
     };
