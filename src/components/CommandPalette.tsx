@@ -32,6 +32,7 @@ export default function CommandPalette() {
         keywords: 'theme dark light mode toggle',
         action: () => {
           const isDark = document.documentElement.classList.toggle('dark');
+          document.getElementById('theme-toggle')?.setAttribute('aria-pressed', String(isDark));
           try {
             localStorage.setItem('theme', isDark ? 'dark' : 'light');
           } catch {}
