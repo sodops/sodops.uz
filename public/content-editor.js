@@ -148,7 +148,9 @@
         event.stopPropagation();
         showEditor(target, key, config);
       });
-      target.after(button);
+      // Never nest an interactive pencil button inside an anchor.
+      var link = target.closest('a');
+      (link || target).after(button);
     });
   }
 
