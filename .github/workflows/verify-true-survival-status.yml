@@ -1,0 +1,30 @@
+name: Confirm True Survival monitored status
+on:
+  push:
+    branches: [ops/inspect-mc-landing]
+permissions:
+  contents: read
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check live project labels without credentials
+        run: |
+          node --input-type=module <<'JS'
+          const url='https://sodops.uz/projects?_mc_status='+Date.now();
+          const res=await fetch(url,{headers:{'Cache-Control':'no-cache'},signal:AbortSignal.timeout(10000)});
+          const html=await res.text();
+          function status(name) {
+            const index=html.indexOf(name);
+            if(index<0)return {found:false,status:'Missing'};
+            const from=html.lastIndexOf('<article',index);
+            const to=html.indexOf('</article>',index);
+            const card=html.slice(from,to>0?to:Math.min(index+2000,html.length));
+            const m=card.match(/>\s*(Operational|Outage|Degraded|Coming soon|No data yet)\s*</i);
+            return {found:true,status:m?.[1]||'Unknown'};
+          }
+          const landing=status('True Survival Landing Page');
+          const minecraft=status('True Survival Minecraft Server');
+          console.log('HTTP',res.status,'landing',JSON.stringify(landing),'minecraft',JSON.stringify(minecraft));
+          if(res.status!==200||landing.status!=='Operational'||minecraft.status.toLowerCase()!=='coming soon') process.exitCode=1;
+          JS
