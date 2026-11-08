@@ -202,8 +202,24 @@ jobs:
         run: |
           set -euo pipefail
           HOST="https://preview.sodops.uz"
-          for path in / /blog /projects /uses /now; do
-            curl -fsSL --retry 4 --retry-delay 4 --retry-all-errors "$HOST$path" -o /dev/null
+          # Cloudflare creates the custom-domain DNS record on the first deploy.
+          # DNS and TLS may need a short propagation window before smoke checks.
+          echo "Checking Cloudflare custom domain DNS and TLS readiness"
+          ready=false
+          for attempt in $(seq 1 24); do
+            if curl --connect-timeout 5 --max-time 12 -fsSL "$HOST/" -o /dev/null; then
+              ready=true
+              break
+            fi
+            echo "Custom domain not resolvable/ready yet (attempt $attempt/24)"
+            sleep 10
+          done
+          if [ "$ready" != "true" ]; then
+            echo "::error::Preview Worker deployed but custom-domain DNS/TLS is not ready. Check Cloudflare DNS and certificate status."
+            exit 1
+          fi
+          for path in /blog /projects /uses /now; do
+            curl -fsSL --retry 3 --retry-delay 3 --retry-all-errors "$HOST$path" -o /dev/null
           done
           headers="$(curl -fsSI "$HOST/")"
           printf '%s\n' "$headers" | tr -d '\r' | grep -qi '^x-robots-tag:.*noindex'
