@@ -47,4 +47,19 @@ test.describe('Theme toggle: real CSS and persistence', () => {
     await expect(root).not.toHaveClass(/dark/);
     await expect.poll(() => backgroundColor(page)).not.toBe(darkBackground);
   });
+  test('command palette theme action updates computed styles and the button state', async ({ page }) => {
+    await page.emulateMedia({ colorScheme: 'light' });
+    await page.goto('/');
+    const before = await backgroundColor(page);
+    await page.getByRole('button', { name: /Open command palette/i }).click();
+    const dialog = page.getByRole('dialog', { name: 'Command Palette' });
+    await expect(dialog).toBeVisible();
+    const input = dialog.getByRole('combobox');
+    await input.fill('theme');
+    await input.press('Enter');
+    await expect(dialog).toBeHidden();
+    await expect(page.locator('html')).toHaveClass(/dark/);
+    await expect(page.getByRole('button', { name: 'Toggle theme' })).toHaveAttribute('aria-pressed', 'true');
+    await expect.poll(() => backgroundColor(page)).not.toBe(before);
+  });
 });
