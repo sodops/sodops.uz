@@ -206,3 +206,26 @@ npx wrangler d1 execute sodops-db --remote --file=backups/backup-2026-10-20.sql
   npx wrangler d1 time-travel restore sodops-db --timestamp="<pre-deploy-iso-timestamp>"
   ```
 
+
+---
+
+## Visual content editor (administrators only)
+
+The visual editor makes ordinary portfolio copy editable without source-code changes:
+
+1. Authenticate at `https://sodops.uz/admin` using Cloudflare Access.
+2. Click **✎ Edit site visually**, or open `/?edit=1` while logged in.
+3. Use a pencil next to a heading, paragraph, navigation label or project card.
+4. Preview the wording, then **Save changes**, **Cancel** or **Restore default**.
+5. Use **Manage posts** for Markdown blog articles; inline editor fields are text-only.
+
+Changes are saved in Cloudflare D1. Supported text fields are allowlisted in
+`src/lib/site-content.ts`; project names and descriptions are stored in `projects`.
+Only Cloudflare Access-authenticated administrators can call the APIs.
+Mutating requests require the same origin; user-provided text is always rendered
+as text, never interpreted as HTML. A history record is kept for each change.
+The D1 tables are automatically created on first authorized edit; SQL is also in
+`migrations/0001-site-content.sql` for explicit migrations.
+
+The editor does **not** let people modify HTML, JavaScript, CSS, status probe
+configuration, live monitoring measurements or deployment secrets.
