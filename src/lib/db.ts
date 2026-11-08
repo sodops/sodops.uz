@@ -197,10 +197,22 @@ export async function savePost(
     id = `post_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
   }
 
-  // D1 batch executes the post and tag mutations atomically.
+  // D1 batch is transactional: post and tag changes commit together.
   const statements = [
-    db.prepare()
-        .bind(
+    db.prepare(`INSERT INTO posts (id, slug, title, content, content_html, excerpt, cover_image, published, published_at, updated_at, reading_time_minutes)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+       ON CONFLICT(id) DO UPDATE SET
+         slug = excluded.slug,
+         title = excluded.title,
+         content = excluded.content,
+         content_html = excluded.content_html,
+         excerpt = excluded.excerpt,
+         cover_image = excluded.cover_image,
+         published = excluded.published,
+         published_at = CASE WHEN excluded.published = 1 AND posts.published_at IS NULL THEN excluded.published_at ELSE posts.published_at END,
+         updated_at = excluded.updated_at,
+         reading_time_minutes = excluded.reading_time_minutes;`)
+      .bind(
       id,
       slug,
       title,
@@ -223,10 +235,8 @@ export async function savePost(
       const tagSlug = tagName.toLowerCase().replace(/[^a-z0-9]/g, '-');
       const tagId = `tag_${tagSlug.replace(/-/g, '_')}`;
       statements.push(
-        db.prepare('INSERT OR IGNORE INTO tags (id, name, slug) VALUES (?, ?, ?)')
-          .bind(tagId, tagName, tagSlug),
-        db.prepare('INSERT OR IGNORE INTO post_tags (post_id, tag_id) VALUES (?, ?)')
-          .bind(id, tagId)
+        db.prepare('INSERT OR IGNORE INTO tags (id, name, slug) VALUES (?, ?, ?)').bind(tagId, tagName, tagSlug),
+        db.prepare('INSERT OR IGNORE INTO post_tags (post_id, tag_id) VALUES (?, ?)').bind(id, tagId)
       );
     }
   }
