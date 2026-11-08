@@ -1,6 +1,6 @@
 import type { APIRoute } from 'astro';
 import { authenticateAdminRequest } from '../../../lib/auth';
-import { validateImageUpload } from '../../../lib/upload';
+import { validateImageUpload, MAX_UPLOAD_SIZE } from '../../../lib/upload';
 
 import { env } from 'cloudflare:workers';
 
@@ -43,6 +43,9 @@ export const POST: APIRoute = async ({ request, locals }) => {
       });
     }
 
+    if (!(file instanceof File) || file.size === 0 || file.size > MAX_UPLOAD_SIZE) {
+      return Response.json({ error: 'Image must be between 1 byte and 5MB' }, { status: 413 });
+    }
     const buffer = new Uint8Array(await file.arrayBuffer());
     const validation = validateImageUpload(buffer, file.type);
 
