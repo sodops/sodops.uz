@@ -32,4 +32,42 @@ test.describe('Visual content editor security and rendering', () => {
     });
     expect([401,403]).toContain(response.status());
   });
+  test('authorized editing mode opens a pencil dialog and saves content', async ({ page }) => {
+    let saved: { key: string; value: string } | undefined;
+    await page.route('**/api/admin/content', async (route) => {
+      if (route.request().method() === 'GET') {
+        await route.fulfill({
+          status: 200, contentType: 'application/json',
+          body: JSON.stringify({
+            defaults: {'home.greeting': "Hi, I'm Sodiq."},
+            overrides: {},
+          }),
+        });
+        return;
+      }
+      if (route.request().method() === 'PUT') {
+        saved = route.request().postDataJSON();
+        await route.fulfill({
+          status: 200, contentType: 'application/json',
+          body: JSON.stringify({ok:true,...saved}),
+        });
+        return;
+      }
+      await route.continue();
+    });
+
+    await page.goto('/?edit=1');
+    const pencil = page.getByRole('button', { name: 'Edit home.greeting' });
+    await expect(pencil).toBeVisible();
+    await pencil.click();
+    const dialog = page.getByRole('dialog', { name: 'Edit home.greeting' });
+    await expect(dialog).toBeVisible();
+    await dialog.getByRole('textbox', {name:'New text for home.greeting'}).fill('Hello from visual CMS');
+    await dialog.getByRole('button', { name: 'Save changes' }).click();
+
+    await expect(dialog).toHaveCount(0);
+    await expect(page.getByRole('heading', {level:1})).toContainText('Hello from visual CMS');
+    expect(saved).toEqual({key:'home.greeting',value:'Hello from visual CMS'});
+  });
+
 });
