@@ -164,6 +164,22 @@
       (link || target).after(button);
     });
 
+    // Markdown articles are edited in the existing protected publishing UI.
+    document.querySelectorAll('[data-post-id]').forEach(function (target) {
+      var id = target.getAttribute('data-post-id');
+      if (!id || !/^[A-Za-z0-9_-]{1,128}$/.test(id)) return;
+      var button = element('button', 'visual-editor-pencil', '✎');
+      button.type = 'button';
+      button.setAttribute('aria-label', 'Edit this article');
+      button.title = 'Open the Markdown editor for this article';
+      button.addEventListener('click', function (event) {
+        event.preventDefault();
+        event.stopPropagation();
+        window.location.href = '/admin?editPost=' + encodeURIComponent(id);
+      });
+      target.after(button);
+    });
+
     // D1 project cards use a separately guarded, field-allowlisted API.
     document.querySelectorAll('[data-project-id][data-project-field]').forEach(function (target) {
       var id = target.getAttribute('data-project-id');
