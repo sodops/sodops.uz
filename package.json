@@ -11,7 +11,7 @@
     "preview": "astro preview",
     "typecheck": "astro check",
     "test": "npx --yes tsx --test src/lib/*.test.ts",
-    "test:e2e": "npx astro preview && npx playwright test && npx astro preview stop",
+    "test:e2e": "playwright test",
     "qa": "node scripts/qa/run-all.mjs",
     "qa:prod": "node scripts/qa/run-prod.mjs",
     "todos": "node scripts/list-todos.mjs",
