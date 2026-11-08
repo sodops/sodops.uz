@@ -149,25 +149,29 @@ export async function getPostById(
   };
 }
 
+export interface PostInput {
+  id?: string;
+  title: string;
+  slug: string;
+  content: string;
+  content_html?: string;
+  excerpt?: string;
+  cover_image?: string;
+  published?: boolean | number;
+  published_at?: string;
+  tags?: string[];
+}
+
+type D1PreparedStatement = ReturnType<D1Database['prepare']>;
+
 /**
  * Saves (creates or updates) a post in D1.
  * Pre-renders content_html at save time so request time uses < 1ms CPU.
  */
-export async function savePost(
+async function preparePostStatements(
   db: D1Database,
-  data: {
-    id?: string;
-    title: string;
-    slug: string;
-    content: string;
-    content_html?: string;
-    excerpt?: string;
-    cover_image?: string;
-    published?: boolean | number;
-    published_at?: string;
-    tags?: string[];
-  }
-): Promise<PostWithTags> {
+  data: PostInput
+): Promise<{ id: string; statements: D1PreparedStatement[] }> {
   const slug = data.slug
     .trim()
     .toLowerCase()
@@ -241,11 +245,31 @@ export async function savePost(
       );
     }
   }
+  return { id, statements };
+}
+
+export async function savePost(db: D1Database, data: PostInput): Promise<PostWithTags> {
+  const { id, statements } = await preparePostStatements(db, data);
   await db.batch(statements);
 
   const saved = await getPostById(db, id);
   if (!saved) throw new Error('Failed to retrieve post after save');
   return saved;
+}
+
+/**
+ * Prepare, sanitize and persist an entire backup as a single atomic D1 batch.
+ * If any SQL statement fails, D1 rolls back the complete batch.
+ */
+export async function importPosts(db: D1Database, posts: PostInput[]): Promise<number> {
+  if (posts.length === 0) return 0;
+  const statements: D1PreparedStatement[] = [];
+  for (const post of posts) {
+    const prepared = await preparePostStatements(db, post);
+    statements.push(...prepared.statements);
+  }
+  await db.batch(statements);
+  return posts.length;
 }
 
 /**
