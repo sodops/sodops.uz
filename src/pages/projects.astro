@@ -2,6 +2,7 @@
 import BaseLayout from '../layouts/BaseLayout.astro';
 import { getProjectsWithStatus, type ProjectWithStatus } from '../lib/db';
 import { strings } from '../lib/strings';
+import { getSiteCopy } from '../lib/site-content';
 import { aggregateMonitoringStatus } from '../lib/monitoring-state';
 import { formatLastChecked } from '../lib/date-format';
 import { env } from 'cloudflare:workers';
@@ -60,10 +61,10 @@ const avgUptime =
       <h1
         class="text-2xl sm:text-3xl font-semibold tracking-tight text-neutral-900 dark:text-neutral-100 font-sans"
       >
-        {strings.projects.title}
+        <span data-edit-key="projects.title">{getSiteCopy(Astro.locals,'projects.title')}</span>
       </h1>
       <p class="text-sm text-neutral-600 dark:text-neutral-400 max-w-xl">
-        {strings.projects.description} Infrastructure services, tools, and live availability monitors.
+        <span data-edit-key="projects.description">{getSiteCopy(Astro.locals,'projects.description')}</span>
       </p>
     </header>
 
