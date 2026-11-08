@@ -1,0 +1,53 @@
+name: Inspect True Survival DNS / Worker / monitoring
+on:
+  push:
+    branches: [ops/inspect-mc-landing]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Inspect Cloudflare APIs using existing deployment secrets
+        shell: bash
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          node --input-type=module <<'JS'
+          const token=process.env.CLOUDFLARE_API_TOKEN;
+          const aid=process.env.CLOUDFLARE_ACCOUNT_ID;
+          if(!token||!aid)throw Error('Missing GitHub Cloudflare deployment credentials');
+          const api='https://api.cloudflare.com/client/v4';
+          async function call(label,url,options={}) {
+            try {
+              const res=await fetch(api+url,{...options,headers:{Authorization:'Bearer '+token,'Content-Type':'application/json',...(options.headers||{})}});
+              const json=await res.json();
+              if(!res.ok||!json.success) {
+                console.log(label,'HTTP',res.status,(json.errors||[]).map(x=>({code:x.code,message:x.message})));
+                return null;
+              }
+              return json.result;
+            }catch(e){console.log(label,'ERROR',String(e.message).slice(0,180));return null;}
+          }
+          let zones=await call('Zone lookup','/zones?name=sodops.uz&per_page=10');
+          console.log('Zones:',(zones||[]).map(z=>({id:z.id,name:z.name,status:z.status})));
+          for(const z of zones||[]) {
+            const dns=await call('DNS lookup',`/zones/${z.id}/dns_records?name=mc.sodops.uz&per_page=100`);
+            console.log('mc.sodops.uz DNS:',(dns||[]).map(x=>({id:x.id,name:x.name,type:x.type,proxied:x.proxied,ttl:x.ttl,content:x.type==='A'||x.type==='AAAA'?'[IP redacted]':x.content})));
+            const routes=await call('Worker routes',`/zones/${z.id}/workers/routes`);
+            console.log('Relevant Worker routes:',(routes||[]).filter(x=>x.pattern?.includes('mc.sodops.uz')||x.pattern?.includes('sodops.uz')).map(x=>({id:x.id,pattern:x.pattern,script:x.script})));
+          }
+          const domains=await call('Worker custom domains',`/accounts/${aid}/workers/domains`);
+          console.log('Worker custom domains:',(domains||[]).filter(x=>x.hostname?.includes('sodops.uz')).map(x=>({id:x.id,hostname:x.hostname,service:x.service,environment:x.environment})));
+          const scripts=await call('Worker scripts',`/accounts/${aid}/workers/scripts`);
+          console.log('Worker scripts:',(scripts||[]).map(x=>x.id||x.script||x.name).filter(Boolean));
+          const databaseId='35a11a8f-8072-470b-ad1d-8402beb7f339';
+          const db=await call('D1 project monitoring',`/accounts/${aid}/d1/database/${databaseId}/query`,{method:'POST',body:JSON.stringify({sql:"SELECT id,name,description,url,status_url,check_type,check_host,check_port,status,featured FROM projects WHERE id='proj_mc_sodops_uz' OR url LIKE '%mc.sodops.uz%'"})});
+          console.log('D1 project rows:',JSON.stringify((db||[]).flatMap(x=>x.results||[])).slice(0,2200));
+          try {
+            const resp=await fetch('https://mc.sodops.uz',{redirect:'manual',signal:AbortSignal.timeout(8000)});
+            console.log('HTTP mc.sodops.uz:',resp.status,'location:',resp.headers.get('location'));
+          }catch(e){console.log('HTTP mc.sodops.uz error:',String(e.message).slice(0,220));}
+          JS
