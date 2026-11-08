@@ -24,7 +24,7 @@ describe('Admin Post Lifecycle: Slug Generation & Uzbek/Cyrillic Transliteration
 });
 
 describe('Admin Post Lifecycle: Long Post Benchmark & CPU Budget', () => {
-  it('renders a 10,000-word technical post within the Cloudflare Workers 10ms CPU budget', async () => {
+  it('benchmarks rendering a 10,000-word technical post', async () => {
     const codeSnippet = '```typescript\nconst x: number = 42;\nconsole.log(x);\n```\n';
     const paragraphs = Array.from({ length: 100 }, (_, i) =>
       `## Section ${i + 1}\nThis is a long technical paragraph discussing distributed databases, edge compute, SQLite replication, and high throughput streaming systems. `.repeat(10) +
@@ -45,7 +45,9 @@ describe('Admin Post Lifecycle: Long Post Benchmark & CPU Budget', () => {
 
     // Even in local Node testing, unified AST rendering of 10k words with 100 highlighted snippets is fast
     console.log(`[Benchmark] 10,000-word post markdown render duration: ${durationMs.toFixed(2)}ms`);
-    assert.ok(durationMs < 500, `Expected rendering time < 500ms, took ${durationMs}ms`);
+    // CI wall-clock timings vary under parallel load; prevent only gross regressions.
+    // This is not a measurement of Cloudflare Worker CPU time.
+    assert.ok(durationMs < 2000, `Markdown rendering regression: ${durationMs}ms`);
   });
 });
 

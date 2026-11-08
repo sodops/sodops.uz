@@ -651,7 +651,11 @@ export async function runStatusChecks(
   const now = new Date().toISOString();
 
   // Concurrent checks with timeout safety and owned host/URL restrictions
-  const checkPromises = activeProjects.map(async (project: any) => {
+  const CHECK_CONCURRENCY = 5;
+  // Process in bounded waves to avoid exhausting Worker subrequest/socket limits.
+  for (let offset = 0; offset < activeProjects.length; offset += CHECK_CONCURRENCY) {
+    const wave = activeProjects.slice(offset, offset + CHECK_CONCURRENCY);
+    const checkPromises = wave.map(async (project: any) => {
     const checkType: 'http' | 'tcp' | 'minecraft' = project.check_type || 'http';
 
     let pingResult: {
@@ -729,6 +733,8 @@ export async function runStatusChecks(
     if (item.status === 'fulfilled' && item.value) {
       results.push(item.value);
     }
+  }
+
   }
 
   // Prune history older than 7 days to keep D1 storage lean

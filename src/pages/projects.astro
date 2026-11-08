@@ -2,6 +2,7 @@
 import BaseLayout from '../layouts/BaseLayout.astro';
 import { getProjectsWithStatus, type ProjectWithStatus } from '../lib/db';
 import { strings } from '../lib/strings';
+import { aggregateMonitoringStatus } from '../lib/monitoring-state';
 import { env } from 'cloudflare:workers';
 
 export const prerender = false;
@@ -32,8 +33,9 @@ const totalServices = activeProjects.length;
 const downServices = activeProjects.filter((p) => p.current_status === 'down').length;
 const degradedServices = activeProjects.filter((p) => p.current_status === 'degraded').length;
 
-const overallStatus =
-  downServices > 0 ? 'down' : degradedServices > 0 ? 'degraded' : 'up';
+const overallStatus = dbError
+  ? 'unknown'
+  : aggregateMonitoringStatus(activeProjects.map((p) => p.current_status));
 
 const projectsWithHistory = activeProjects.filter(
   (p) => p.has_history && p.uptime_percentage_30d !== null
@@ -79,6 +81,11 @@ const avgUptime =
         <div class="flex items-center gap-2.5">
           <span class="relative flex h-3 w-3">
             {
+              overallStatus === 'unknown' && (
+                <span class="relative inline-flex rounded-full h-3 w-3 bg-neutral-400" />
+              )
+            }
+            {
               overallStatus === 'up' && (
                 <>
                   <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
@@ -104,6 +111,7 @@ const avgUptime =
             }
           </span>
           <span class="text-sm font-semibold tracking-tight text-neutral-900 dark:text-neutral-100 font-sans">
+            {overallStatus === 'unknown' && 'Monitoring Status Unavailable'}
             {overallStatus === 'up' && 'All Systems Operational'}
             {overallStatus === 'degraded' && 'Partial System Degradation'}
             {overallStatus === 'down' && 'Service Outage Detected'}

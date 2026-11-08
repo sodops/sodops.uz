@@ -1,4 +1,5 @@
 import { calculateReadingTimeMinutes } from './markdown-utils';
+import { classifyMonitoringStatus } from './monitoring-state';
 
 type D1Database = import('@cloudflare/workers-types').D1Database;
 
@@ -21,6 +22,8 @@ export interface PostWithTags extends Post {
   tags: string[];
 }
 
+export type PostSummaryWithTags = Omit<PostWithTags, 'content' | 'content_html'>;
+
 export interface Tag {
   id: string;
   name: string;
@@ -31,12 +34,12 @@ export interface Tag {
  * Retrieves all published posts ordered by published_at DESC.
  * Runs in < 2ms on Cloudflare D1.
  */
-export async function getPublishedPosts(db?: D1Database): Promise<PostWithTags[]> {
+export async function getPublishedPosts(db?: D1Database): Promise<PostSummaryWithTags[]> {
   if (!db) return [];
 
   const query = `
     SELECT 
-      p.id, p.slug, p.title, p.content, p.content_html, p.excerpt, 
+      p.id, p.slug, p.title, p.excerpt, 
       p.cover_image, p.published, p.published_at, p.created_at, p.updated_at, 
       p.reading_time_minutes,
       GROUP_CONCAT(t.name) as tags_str
@@ -75,6 +78,27 @@ export async function getAllPosts(db?: D1Database): Promise<PostWithTags[]> {
   `;
 
   const { results } = await db.prepare(query).all();
+  return (results || []).map((row: any) => ({
+    ...row,
+    tags: row.tags_str ? row.tags_str.split(',') : [],
+  }));
+}
+
+/**
+ * Admin list view only needs metadata. Fetch full content on edit via getPostById.
+ */
+export async function getAllPostSummaries(db?: D1Database): Promise<PostSummaryWithTags[]> {
+  if (!db) return [];
+  const { results } = await db.prepare(`
+    SELECT p.id, p.slug, p.title, p.excerpt, p.cover_image, p.published,
+           p.published_at, p.created_at, p.updated_at, p.reading_time_minutes,
+           GROUP_CONCAT(t.name) as tags_str
+    FROM posts p
+    LEFT JOIN post_tags pt ON p.id = pt.post_id
+    LEFT JOIN tags t ON pt.tag_id = t.id
+    GROUP BY p.id
+    ORDER BY p.updated_at DESC;
+  `).all();
   return (results || []).map((row: any) => ({
     ...row,
     tags: row.tags_str ? row.tags_str.split(',') : [],
@@ -148,25 +172,29 @@ export async function getPostById(
   };
 }
 
+export interface PostInput {
+  id?: string;
+  title: string;
+  slug: string;
+  content: string;
+  content_html?: string;
+  excerpt?: string;
+  cover_image?: string;
+  published?: boolean | number;
+  published_at?: string;
+  tags?: string[];
+}
+
+type D1PreparedStatement = ReturnType<D1Database['prepare']>;
+
 /**
  * Saves (creates or updates) a post in D1.
  * Pre-renders content_html at save time so request time uses < 1ms CPU.
  */
-export async function savePost(
+async function preparePostStatements(
   db: D1Database,
-  data: {
-    id?: string;
-    title: string;
-    slug: string;
-    content: string;
-    content_html?: string;
-    excerpt?: string;
-    cover_image?: string;
-    published?: boolean | number;
-    published_at?: string;
-    tags?: string[];
-  }
-): Promise<PostWithTags> {
+  data: PostInput
+): Promise<{ id: string; statements: D1PreparedStatement[] }> {
   const slug = data.slug
     .trim()
     .toLowerCase()
@@ -197,10 +225,9 @@ export async function savePost(
     id = `post_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
   }
 
-  // Insert or Replace post
-  await db
-    .prepare(
-      `INSERT INTO posts (id, slug, title, content, content_html, excerpt, cover_image, published, published_at, updated_at, reading_time_minutes)
+  // D1 batch is transactional: post and tag changes commit together.
+  const statements = [
+    db.prepare(`INSERT INTO posts (id, slug, title, content, content_html, excerpt, cover_image, published, published_at, updated_at, reading_time_minutes)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
        ON CONFLICT(id) DO UPDATE SET
          slug = excluded.slug,
@@ -212,9 +239,8 @@ export async function savePost(
          published = excluded.published,
          published_at = CASE WHEN excluded.published = 1 AND posts.published_at IS NULL THEN excluded.published_at ELSE posts.published_at END,
          updated_at = excluded.updated_at,
-         reading_time_minutes = excluded.reading_time_minutes;`
-    )
-    .bind(
+         reading_time_minutes = excluded.reading_time_minutes;`)
+      .bind(
       id,
       slug,
       title,
@@ -226,33 +252,28 @@ export async function savePost(
       publishedAt,
       now,
       readingTime
-    )
-    .run();
+    ),
+  ];
 
-  // Update tags
   if (data.tags) {
-    // Delete existing post_tags
-    await db.prepare('DELETE FROM post_tags WHERE post_id = ?').bind(id).run();
-
+    statements.push(db.prepare('DELETE FROM post_tags WHERE post_id = ?').bind(id));
     for (const rawTag of data.tags) {
       const tagName = rawTag.trim();
       if (!tagName) continue;
       const tagSlug = tagName.toLowerCase().replace(/[^a-z0-9]/g, '-');
       const tagId = `tag_${tagSlug.replace(/-/g, '_')}`;
-
-      // Insert tag if not exists
-      await db
-        .prepare('INSERT OR IGNORE INTO tags (id, name, slug) VALUES (?, ?, ?)')
-        .bind(tagId, tagName, tagSlug)
-        .run();
-
-      // Link post_tags
-      await db
-        .prepare('INSERT OR IGNORE INTO post_tags (post_id, tag_id) VALUES (?, ?)')
-        .bind(id, tagId)
-        .run();
+      statements.push(
+        db.prepare('INSERT OR IGNORE INTO tags (id, name, slug) VALUES (?, ?, ?)').bind(tagId, tagName, tagSlug),
+        db.prepare('INSERT OR IGNORE INTO post_tags (post_id, tag_id) VALUES (?, ?)').bind(id, tagId)
+      );
     }
   }
+  return { id, statements };
+}
+
+export async function savePost(db: D1Database, data: PostInput): Promise<PostWithTags> {
+  const { id, statements } = await preparePostStatements(db, data);
+  await db.batch(statements);
 
   const saved = await getPostById(db, id);
   if (!saved) throw new Error('Failed to retrieve post after save');
@@ -260,11 +281,28 @@ export async function savePost(
 }
 
 /**
+ * Prepare, sanitize and persist an entire backup as a single atomic D1 batch.
+ * If any SQL statement fails, D1 rolls back the complete batch.
+ */
+export async function importPosts(db: D1Database, posts: PostInput[]): Promise<number> {
+  if (posts.length === 0) return 0;
+  const statements: D1PreparedStatement[] = [];
+  for (const post of posts) {
+    const prepared = await preparePostStatements(db, post);
+    statements.push(...prepared.statements);
+  }
+  await db.batch(statements);
+  return posts.length;
+}
+
+/**
  * Deletes a post from D1.
  */
 export async function deletePost(db: D1Database, id: string): Promise<boolean> {
-  await db.prepare('DELETE FROM post_tags WHERE post_id = ?').bind(id).run();
-  const res = await db.prepare('DELETE FROM posts WHERE id = ?').bind(id).run();
+  const [, res] = await db.batch([
+    db.prepare('DELETE FROM post_tags WHERE post_id = ?').bind(id),
+    db.prepare('DELETE FROM posts WHERE id = ?').bind(id),
+  ]);
   return (res.meta.changes || 0) > 0;
 }
 
@@ -462,11 +500,11 @@ export async function getProjectsWithStatus(
     const has_history = totalChecks > 0;
     const uptime_percentage_30d = has_history
       ? Number(((upChecks / totalChecks) * 100).toFixed(2))
-      : 100;
+      : null;
 
     return {
       ...p,
-      current_status: (latest?.status as any) || 'unknown',
+      current_status: classifyMonitoringStatus(latest?.status as string | undefined, latest?.timestamp as string | undefined),
       latest_latency_ms: latest ? Number(latest.latency_ms) : null,
       latest_check_at: (latest?.timestamp as string) || null,
       latest_metadata: (latest?.metadata as string) || null,
@@ -529,11 +567,11 @@ export async function getFeaturedProjects(
     const latest = latestMap.get(p.id);
     return {
       ...p,
-      current_status: (latest?.status as any) || 'unknown',
+      current_status: classifyMonitoringStatus(latest?.status as string | undefined, latest?.timestamp as string | undefined),
       latest_latency_ms: latest ? Number(latest.latency_ms) : null,
       latest_check_at: (latest?.timestamp as string) || null,
       latest_metadata: (latest?.metadata as string) || null,
-      uptime_percentage_30d: 100,
+      uptime_percentage_30d: null,
       uptime_history_30d: [],
       has_history: false,
     };

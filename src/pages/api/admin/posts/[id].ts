@@ -1,5 +1,5 @@
 import type { APIRoute } from 'astro';
-import { authenticateAdminRequest } from '../../../../lib/auth';
+import { resolveAdminAuth } from '../../../../lib/admin-request-auth';
 import { getPostById, savePost, deletePost } from '../../../../lib/db';
 
 import { env } from 'cloudflare:workers';
@@ -7,15 +7,7 @@ import { env } from 'cloudflare:workers';
 export const prerender = false;
 
 export const GET: APIRoute = async ({ params, request, locals }) => {
-  const auth = (locals as any)?.auth || await authenticateAdminRequest({
-    isDev: import.meta.env.DEV,
-    host: request.headers.get('host'),
-    jwtAssertion: request.headers.get('Cf-Access-Jwt-Assertion'),
-    adminEmails: env.ADMIN_EMAILS || env.ADMIN_EMAIL,
-    expectedAud: env.CF_ACCESS_AUD,
-    teamDomain: env.CF_ACCESS_TEAM_DOMAIN,
-    devBypassAuth: env.DEV_BYPASS_AUTH === 'true' || import.meta.env.DEV,
-  });
+  const auth = await resolveAdminAuth(request, locals);
 
   if (!auth.authenticated) {
     console.warn(`[Admin API Guard] ${auth.statusCode || 401}: ${auth.error}`);
@@ -47,15 +39,7 @@ export const GET: APIRoute = async ({ params, request, locals }) => {
 };
 
 export const PUT: APIRoute = async ({ params, request, locals }) => {
-  const auth = (locals as any)?.auth || await authenticateAdminRequest({
-    isDev: import.meta.env.DEV,
-    host: request.headers.get('host'),
-    jwtAssertion: request.headers.get('Cf-Access-Jwt-Assertion'),
-    adminEmails: env.ADMIN_EMAILS || env.ADMIN_EMAIL,
-    expectedAud: env.CF_ACCESS_AUD,
-    teamDomain: env.CF_ACCESS_TEAM_DOMAIN,
-    devBypassAuth: env.DEV_BYPASS_AUTH === 'true' || import.meta.env.DEV,
-  });
+  const auth = await resolveAdminAuth(request, locals);
 
   if (!auth.authenticated) {
     console.warn(`[Admin API Guard] ${auth.statusCode || 401}: ${auth.error}`);
@@ -135,15 +119,7 @@ export const PUT: APIRoute = async ({ params, request, locals }) => {
 };
 
 export const DELETE: APIRoute = async ({ params, request, locals }) => {
-  const auth = (locals as any)?.auth || await authenticateAdminRequest({
-    isDev: import.meta.env.DEV,
-    host: request.headers.get('host'),
-    jwtAssertion: request.headers.get('Cf-Access-Jwt-Assertion'),
-    adminEmails: env.ADMIN_EMAILS || env.ADMIN_EMAIL,
-    expectedAud: env.CF_ACCESS_AUD,
-    teamDomain: env.CF_ACCESS_TEAM_DOMAIN,
-    devBypassAuth: env.DEV_BYPASS_AUTH === 'true' || import.meta.env.DEV,
-  });
+  const auth = await resolveAdminAuth(request, locals);
 
   if (!auth.authenticated) {
     console.warn(`[Admin API Guard] ${auth.statusCode || 401}: ${auth.error}`);

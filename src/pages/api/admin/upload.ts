@@ -1,21 +1,13 @@
 import type { APIRoute } from 'astro';
-import { authenticateAdminRequest } from '../../../lib/auth';
-import { validateImageUpload } from '../../../lib/upload';
+import { resolveAdminAuth } from '../../../lib/admin-request-auth';
+import { validateImageUpload, MAX_UPLOAD_SIZE } from '../../../lib/upload';
 
 import { env } from 'cloudflare:workers';
 
 export const prerender = false;
 
 export const POST: APIRoute = async ({ request, locals }) => {
-  const auth = (locals as any)?.auth || await authenticateAdminRequest({
-    isDev: import.meta.env.DEV,
-    host: request.headers.get('host'),
-    jwtAssertion: request.headers.get('Cf-Access-Jwt-Assertion'),
-    adminEmails: env.ADMIN_EMAILS || env.ADMIN_EMAIL,
-    expectedAud: env.CF_ACCESS_AUD,
-    teamDomain: env.CF_ACCESS_TEAM_DOMAIN,
-    devBypassAuth: env.DEV_BYPASS_AUTH === 'true' || import.meta.env.DEV,
-  });
+  const auth = await resolveAdminAuth(request, locals);
 
   if (!auth.authenticated) {
     console.warn(`[Admin API Guard] ${auth.statusCode || 401}: ${auth.error}`);
@@ -23,6 +15,19 @@ export const POST: APIRoute = async ({ request, locals }) => {
       status: auth.statusCode || 401,
       headers: { 'Content-Type': 'application/json' },
     });
+  }
+
+  if (!env.UPLOADS_BUCKET) {
+    return new Response(JSON.stringify({ error: 'Image storage is unavailable' }), {
+      status: 503,
+      headers: { 'Content-Type': 'application/json' },
+    });
+  }
+
+  const declaredSize = Number(request.headers.get('content-length'));
+  // Multipart boundaries add small overhead to the 5MB image limit.
+  if (Number.isFinite(declaredSize) && declaredSize > MAX_UPLOAD_SIZE + 64 * 1024) {
+    return Response.json({ error: 'Upload request is too large' }, { status: 413 });
   }
 
   try {
@@ -36,6 +41,9 @@ export const POST: APIRoute = async ({ request, locals }) => {
       });
     }
 
+    if (!(file instanceof File) || file.size === 0 || file.size > MAX_UPLOAD_SIZE) {
+      return Response.json({ error: 'Image must be between 1 byte and 5MB' }, { status: 413 });
+    }
     const buffer = new Uint8Array(await file.arrayBuffer());
     const validation = validateImageUpload(buffer, file.type);
 
@@ -49,16 +57,13 @@ export const POST: APIRoute = async ({ request, locals }) => {
     const sanitizedBase = file.name
       .replace(/\.[^/.]+$/, '')
       .replace(/[^a-zA-Z0-9-_]/g, '-')
-      .toLowerCase();
-    const key = `posts/${Date.now()}-${sanitizedBase}.${validation.extension}`;
+      .toLowerCase()
+      .slice(0, 80) || 'image';
+    const key = `posts/${crypto.randomUUID()}-${sanitizedBase}.${validation.extension}`;
 
-    if (env.UPLOADS_BUCKET) {
-      await env.UPLOADS_BUCKET.put(key, buffer, {
-        httpMetadata: {
-          contentType: validation.mimeType,
-        },
-      });
-    }
+    await env.UPLOADS_BUCKET.put(key, buffer, {
+      httpMetadata: { contentType: validation.mimeType },
+    });
 
     const publicUrl = `/images/${key}`;
     return new Response(
