@@ -41,6 +41,24 @@ export const POST: APIRoute = async ({ request, locals }) => {
       });
     }
 
+    // Reject malformed backups before making any database changes.
+    if (backup.posts.length > 100) {
+      return new Response(JSON.stringify({ error: 'Backup exceeds 100 posts' }), {
+        status: 413, headers: { 'Content-Type': 'application/json' },
+      });
+    }
+    if (!backup.posts.every((post: any) =>
+      post && typeof post.title === 'string' && post.title.trim() &&
+      typeof post.slug === 'string' && post.slug.trim() &&
+      typeof post.content === 'string' && post.content.trim() &&
+      post.content.length <= 65536 &&
+      (post.tags === undefined || (Array.isArray(post.tags) && post.tags.every((tag: unknown) => typeof tag === 'string')))
+    )) {
+      return new Response(JSON.stringify({ error: 'Invalid post in backup' }), {
+        status: 400, headers: { 'Content-Type': 'application/json' },
+      });
+    }
+
     let importedCount = 0;
     for (const post of backup.posts) {
       if (post.title && post.slug && post.content) {
