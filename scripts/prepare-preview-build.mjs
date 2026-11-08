@@ -29,6 +29,9 @@ for (const key of disallowed) delete build[key];
 // Workers Previews config must provide all runtime preview vars independently.
 build.previews = {
   ...(build.previews || {}),
+  kv_namespaces: [],
+  d1_databases: [],
+  r2_buckets: [],
   vars: {
     SITE_URL: 'https://sodops.uz',
     SITE_INDEXING: 'off',
@@ -36,4 +39,6 @@ build.previews = {
   },
 };
 fs.writeFileSync(filename, JSON.stringify(build, null, 2) + '\n');
+console.log('Preview binding keys:', Object.keys(build.previews || {}));
+console.log('Top-level binding keys remaining:', Object.keys(build).filter(key => /kv|d1|r2|binding|session/i.test(key)));
 console.log('Prepared isolated public-only Preview build without production resource bindings.');
