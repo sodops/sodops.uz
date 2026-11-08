@@ -88,7 +88,7 @@ test.describe('Playwright User Flows & Micro-Interactions', () => {
 
     // 4. Focus Trap: Pressing Tab keeps focus inside dialog
     await page.keyboard.press('Tab');
-    await expect(input).toBeFocused();
+    expect(await dialog.evaluate((el) => el.contains(document.activeElement))).toBe(true);
 
     // 5. Close via Escape and verify Focus Return
     await page.keyboard.press('Escape');

@@ -106,3 +106,134 @@ jobs:
         env:
           PROD_URL: https://sodops.uz
         run: pnpm qa:prod
+
+  preview:
+    name: Deploy pull request preview
+    needs: check
+    if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      deployments: write
+      pull-requests: write
+    concurrency:
+      group: cloudflare-preview-pr-${{ github.event.pull_request.number }}
+      cancel-in-progress: true
+
+    steps:
+      - name: Checkout PR revision
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@fe02b34f77f8bc703788d5817da081398fad5dd2 # v4.0.0
+        with:
+          version: 12.14.0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@1d0ff469b7ec7b3cb9d8673fde0c81c44821de2a # v4.2.0
+        with:
+          node-version: '22.23.4'
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build preview assets
+        run: pnpm build
+
+      - name: Strip production data bindings from preview build
+        run: node scripts/prepare-preview-build.mjs
+
+      - name: Verify Cloudflare credentials
+        env:
+          CF_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CF_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          if [ -z "$CF_API_TOKEN" ] || [ -z "$CF_ACCOUNT_ID" ]; then
+            echo "::error::Cloudflare preview requires GitHub Actions secrets CLOUDFLARE_API_TOKEN and CLOUDFLARE_ACCOUNT_ID."
+            exit 1
+          fi
+
+      - name: Create or update isolated PR preview
+        id: preview
+        uses: cloudflare/wrangler-action@953926a2e2182532811c01a25e53647d93bf07c0 # v4
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          wranglerVersion: '4.136.3'
+          command: preview --name pr-${{ github.event.pull_request.number }} --ignore-base-config
+          gitHubToken: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Smoke test deployed preview
+        env:
+          PREVIEW_URL: ${{ steps.preview.outputs.preview-url }}
+        run: |
+          set -euo pipefail
+          if [ -z "$PREVIEW_URL" ]; then
+            echo "::error::Cloudflare did not return a Preview URL."
+            exit 1
+          fi
+          for path in / /blog /projects /uses /now; do
+            curl -fsSL --retry 3 --retry-delay 2 --retry-all-errors "$PREVIEW_URL$path" -o /dev/null
+          done
+          header="$(curl -fsSI "$PREVIEW_URL/" | tr -d '\r' | grep -i '^x-robots-tag:' || true)"
+          if ! printf '%s' "$header" | grep -qi noindex; then
+            echo "::error::Preview must not be indexed by search engines."
+            exit 1
+          fi
+          status="$(curl -s -o /dev/null -w '%{http_code}' "$PREVIEW_URL/admin")"
+          if [ "$status" != 401 ] && [ "$status" != 403 ] && [ "$status" != 302 ]; then
+            echo "::error::Preview admin route was unexpectedly accessible (HTTP $status)."
+            exit 1
+          fi
+
+      - name: Deploy stable preview.sodops.uz
+        if: github.event.pull_request.number == 21
+        id: stable-preview
+        uses: cloudflare/wrangler-action@953926a2e2182532811c01a25e53647d93bf07c0 # v4
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          wranglerVersion: '4.136.3'
+          command: deploy --config dist/server/wrangler.stable-preview.json
+
+      - name: Check stable preview custom domain
+        if: github.event.pull_request.number == 21
+        run: |
+          set -euo pipefail
+          HOST="https://preview.sodops.uz"
+          # Cloudflare creates the custom-domain DNS record on the first deploy.
+          # DNS and TLS may need a short propagation window before smoke checks.
+          echo "Checking Cloudflare custom domain DNS and TLS readiness"
+          ready=false
+          for attempt in $(seq 1 24); do
+            if curl --connect-timeout 5 --max-time 12 -fsSL "$HOST/" -o /dev/null; then
+              ready=true
+              break
+            fi
+            echo "Custom domain not resolvable/ready yet (attempt $attempt/24)"
+            sleep 10
+          done
+          if [ "$ready" != "true" ]; then
+            echo "::error::Preview Worker deployed but custom-domain DNS/TLS is not ready. Check Cloudflare DNS and certificate status."
+            exit 1
+          fi
+          for path in /blog /projects /uses /now; do
+            curl -fsSL --retry 3 --retry-delay 3 --retry-all-errors "$HOST$path" -o /dev/null
+          done
+          headers="$(curl -fsSI "$HOST/")"
+          printf '%s\n' "$headers" | tr -d '\r' | grep -qi '^x-robots-tag:.*noindex'
+          status="$(curl -s -o /dev/null -w '%{http_code}' "$HOST/admin")"
+          [ "$status" = "401" ] || [ "$status" = "403" ] || [ "$status" = "302" ]
+          echo "### Stable preview domain" >> "$GITHUB_STEP_SUMMARY"
+          echo "[Open preview.sodops.uz](https://preview.sodops.uz)" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Publish review URL
+        env:
+          PREVIEW_URL: ${{ steps.preview.outputs.preview-url }}
+        run: |
+          echo "### Cloudflare PR preview" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "[Open updated site preview]($PREVIEW_URL)" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "This preview has no production D1/KV/R2 bindings and cannot modify production data." >> "$GITHUB_STEP_SUMMARY"

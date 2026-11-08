@@ -32,6 +32,7 @@ export default function CommandPalette() {
         keywords: 'theme dark light mode toggle',
         action: () => {
           const isDark = document.documentElement.classList.toggle('dark');
+          document.getElementById('theme-toggle')?.setAttribute('aria-pressed', String(isDark));
           try {
             localStorage.setItem('theme', isDark ? 'dark' : 'light');
           } catch {}
@@ -159,11 +160,6 @@ export default function CommandPalette() {
 
   // Keyboard navigation within list & focus trap
   const handleInputKeyDown = (e: KeyboardEvent) => {
-    if (e.key === 'Tab') {
-      e.preventDefault(); // Trap focus inside search input
-      return;
-    }
-
     if (filteredItems.length === 0) return;
 
     if (e.key === 'ArrowDown') {
@@ -205,6 +201,23 @@ export default function CommandPalette() {
     <div
       class="fixed inset-0 z-50 flex items-start justify-center pt-16 sm:pt-24 px-4 bg-neutral-950/50 backdrop-blur-xs transition-opacity duration-150 animate-in fade-in"
       onClick={() => setIsOpen(false)}
+      onKeyDown={(e: KeyboardEvent) => {
+        if (e.key !== 'Tab') return;
+        const root = e.currentTarget as HTMLElement;
+        const focusables = Array.from(root.querySelectorAll<HTMLElement>(
+          'input:not([disabled]), button:not([disabled]), a[href], [tabindex]:not([tabindex="-1"])'
+        )).filter((el) => el.getClientRects().length > 0);
+        if (!focusables.length) return;
+        const first = focusables[0];
+        const last = focusables[focusables.length - 1];
+        if (e.shiftKey && document.activeElement === first) {
+          e.preventDefault();
+          last.focus();
+        } else if (!e.shiftKey && document.activeElement === last) {
+          e.preventDefault();
+          first.focus();
+        }
+      }}
       role="dialog"
       aria-modal="true"
       aria-label="Command Palette"
