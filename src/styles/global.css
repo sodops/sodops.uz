@@ -261,3 +261,15 @@ html.dark .hljs-meta {
     scroll-behavior: auto !important;
   }
 }
+
+/* UI polish: coherent interaction geometry and readable long-form copy */
+html { scroll-padding-top: 1.5rem; }
+.prose { overflow-wrap: anywhere; }
+.prose :is(h2, h3, h4) { scroll-margin-top: 2rem; }
+.prose :is(a, button) { text-underline-offset: 3px; }
+@media (pointer: coarse) {
+  .code-copy-btn { opacity: 1 !important; }
+}
+@media (max-width: 420px) {
+  .prose pre { max-width: calc(100vw - 2rem); }
+}
