@@ -2,6 +2,7 @@
 import BaseLayout from '../layouts/BaseLayout.astro';
 import { getProjectsWithStatus, type ProjectWithStatus } from '../lib/db';
 import { strings } from '../lib/strings';
+import { aggregateMonitoringStatus } from '../lib/monitoring-state';
 import { env } from 'cloudflare:workers';
 
 export const prerender = false;
@@ -32,16 +33,9 @@ const totalServices = activeProjects.length;
 const downServices = activeProjects.filter((p) => p.current_status === 'down').length;
 const degradedServices = activeProjects.filter((p) => p.current_status === 'degraded').length;
 
-const unknownServices = activeProjects.filter((p) =>
-  p.current_status === 'unknown' || !p.latest_check_at ||
-  !Number.isFinite(Date.parse(p.latest_check_at)) ||
-  Date.now() - Date.parse(p.latest_check_at) > 15 * 60 * 1000
-).length;
-
-const overallStatus =
-  dbError || totalServices === 0 || unknownServices > 0
-    ? 'unknown'
-    : downServices > 0 ? 'down' : degradedServices > 0 ? 'degraded' : 'up';
+const overallStatus = dbError
+  ? 'unknown'
+  : aggregateMonitoringStatus(activeProjects.map((p) => p.current_status));
 
 const projectsWithHistory = activeProjects.filter(
   (p) => p.has_history && p.uptime_percentage_30d !== null
@@ -148,7 +142,7 @@ const avgUptime =
                   <span
                     class:list={[
                       'inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[11px] font-mono uppercase tracking-wider',
-                      (project.current_status === 'up' && project.latest_check_at && Number.isFinite(Date.parse(project.latest_check_at)) && Date.now() - Date.parse(project.latest_check_at) <= 15 * 60 * 1000)
+                      project.current_status === 'up'
                         ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/80 dark:text-emerald-300'
                         : project.current_status === 'degraded'
                           ? 'bg-amber-100 text-amber-800 dark:bg-amber-950/80 dark:text-amber-300'
@@ -162,7 +156,7 @@ const avgUptime =
                     <span
                       class:list={[
                         'w-1.5 h-1.5 rounded-full',
-                        (project.current_status === 'up' && project.latest_check_at && Number.isFinite(Date.parse(project.latest_check_at)) && Date.now() - Date.parse(project.latest_check_at) <= 15 * 60 * 1000)
+                        project.current_status === 'up'
                           ? 'bg-emerald-500'
                           : project.current_status === 'degraded'
                             ? 'bg-amber-500'
@@ -171,7 +165,7 @@ const avgUptime =
                               : 'bg-neutral-400',
                       ]}
                     />
-                    {(project.current_status === 'up' && project.latest_check_at && Number.isFinite(Date.parse(project.latest_check_at)) && Date.now() - Date.parse(project.latest_check_at) <= 15 * 60 * 1000)
+                    {project.current_status === 'up'
                       ? strings.projects.statusUp
                       : project.current_status === 'degraded'
                         ? strings.projects.statusDegraded
