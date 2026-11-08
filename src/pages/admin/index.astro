@@ -1,21 +1,13 @@
 ---
 import BaseLayout from '../../layouts/BaseLayout.astro';
-import { authenticateAdminRequest } from '../../lib/auth';
+import { resolveAdminAuth } from '../../lib/admin-request-auth';
 import { getAllPosts } from '../../lib/db';
 
 import { env } from 'cloudflare:workers';
 
 export const prerender = false;
 
-const auth = (Astro.locals as any)?.auth || await authenticateAdminRequest({
-  isDev: import.meta.env.DEV,
-  host: Astro.request.headers.get('host'),
-  jwtAssertion: Astro.request.headers.get('Cf-Access-Jwt-Assertion'),
-  adminEmails: env.ADMIN_EMAILS || env.ADMIN_EMAIL,
-  expectedAud: env.CF_ACCESS_AUD,
-  teamDomain: env.CF_ACCESS_TEAM_DOMAIN,
-  devBypassAuth: env.DEV_BYPASS_AUTH === 'true' || import.meta.env.DEV,
-});
+const auth = await resolveAdminAuth(Astro.request, Astro.locals);
 
 const isAuthenticated = auth.authenticated;
 if (!isAuthenticated) {
