@@ -58,6 +58,9 @@ const initialPosts = isAuthenticated && env.DB ? await getAllPostSummaries(env.D
           </div>
 
           <div class="flex items-center gap-2">
+            <a href="/?edit=1" class="px-3 py-1.5 text-xs font-semibold rounded border border-emerald-600 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950 transition-colors">
+              ✎ Edit site visually
+            </a>
             <button
               type="button"
               id="new-post-btn"
