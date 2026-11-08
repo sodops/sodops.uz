@@ -118,7 +118,7 @@ const avgUptime =
           </span>
         </div>
 
-        <div class="flex items-center gap-4 text-xs font-mono text-neutral-600 dark:text-neutral-400">
+        <div class="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs font-mono text-neutral-600 dark:text-neutral-400">
           <span>{totalServices} Monitored Endpoints</span>
           <span>&middot;</span>
           <span>{avgUptime ? `${avgUptime}% Avg 30-Day Uptime` : 'Awaiting Initial Checks'}</span>
@@ -130,8 +130,8 @@ const avgUptime =
     <section class="space-y-6">
       {
         projects.length === 0 ? (
-          <p class="py-12 text-center text-xs font-mono text-neutral-500 dark:text-neutral-400">
-            No projects registered in database yet.
+          <p class="py-12 text-center text-sm text-neutral-600 dark:text-neutral-400">
+            {dbError ? 'Projects are temporarily unavailable. Please try again shortly.' : 'No projects published yet.'}
           </p>
         ) : (
           projects.map((project) => (
@@ -203,7 +203,7 @@ const avgUptime =
                   </h2>
                 </div>
 
-                <div class="flex items-center gap-3 text-xs font-mono text-neutral-600 dark:text-neutral-400">
+                <div class="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs font-mono text-neutral-600 dark:text-neutral-400">
                   {project.current_status === 'paused' ? (
                     <span>Status: Coming soon</span>
                   ) : (
@@ -244,6 +244,17 @@ const avgUptime =
                   )}
                 </div>
               </div>
+
+              {project.status !== 'paused' && (
+                <p class="text-xs text-neutral-600 dark:text-neutral-400">
+                  Last checked: {project.latest_check_at
+                    ? new Date(project.latest_check_at).toLocaleString('en-US', { timeZone: 'UTC', timeZoneName: 'short', dateStyle: 'medium', timeStyle: 'short' })
+                    : 'No checks recorded'}
+                  {project.current_status === 'unknown' && (
+                    <span> · Latest monitoring data is unavailable or stale.</span>
+                  )}
+                </p>
+              )}
 
               {/* Description */}
               <p class="text-xs sm:text-sm text-neutral-600 dark:text-neutral-400 leading-relaxed">
@@ -295,7 +306,7 @@ const avgUptime =
                   </div>
                 ) : project.has_history ? (
                   <>
-                    <div class="flex items-center gap-[3px] h-6 w-full" aria-label="30-day uptime bars">
+                    <div class="flex items-center gap-[3px] h-6 w-full" role="img" aria-label="30-day uptime history. Green means operational, amber degraded, red outage, gray no data.">
                       {project.uptime_history_30d.map((day) => {
                         const dayLabel =
                           day.status === 'none'
@@ -303,9 +314,7 @@ const avgUptime =
                             : `${day.date}: ${day.status.toUpperCase()} (${day.percent}% available${day.avgLatency !== undefined ? `, avg ${day.avgLatency}ms` : ''})`;
                         return (
                           <div
-                            role="img"
-                            tabindex="0"
-                            aria-label={dayLabel}
+                            aria-hidden="true"
                             title={dayLabel}
                             class:list={[
                               'flex-1 h-full rounded-[2px] transition-transform hover:scale-y-125 focus:scale-y-125 focus:outline-none focus:ring-1 focus:ring-emerald-400 cursor-pointer',
@@ -322,7 +331,7 @@ const avgUptime =
                       })}
                     </div>
 
-                    <div class="flex items-center justify-between text-[10px] font-mono text-neutral-600 dark:text-neutral-400">
+                    <div class="flex flex-wrap items-center justify-between gap-2 text-[11px] font-mono text-neutral-600 dark:text-neutral-400">
                       <span>30 days ago</span>
                       <span>Checked every 5m via Cloudflare Cron</span>
                       <span>Today</span>
