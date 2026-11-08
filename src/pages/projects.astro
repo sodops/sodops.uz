@@ -32,8 +32,16 @@ const totalServices = activeProjects.length;
 const downServices = activeProjects.filter((p) => p.current_status === 'down').length;
 const degradedServices = activeProjects.filter((p) => p.current_status === 'degraded').length;
 
+const unknownServices = activeProjects.filter((p) =>
+  p.current_status === 'unknown' || !p.latest_check_at ||
+  !Number.isFinite(Date.parse(p.latest_check_at)) ||
+  Date.now() - Date.parse(p.latest_check_at) > 15 * 60 * 1000
+).length;
+
 const overallStatus =
-  downServices > 0 ? 'down' : degradedServices > 0 ? 'degraded' : 'up';
+  dbError || totalServices === 0 || unknownServices > 0
+    ? 'unknown'
+    : downServices > 0 ? 'down' : degradedServices > 0 ? 'degraded' : 'up';
 
 const projectsWithHistory = activeProjects.filter(
   (p) => p.has_history && p.uptime_percentage_30d !== null
@@ -79,6 +87,11 @@ const avgUptime =
         <div class="flex items-center gap-2.5">
           <span class="relative flex h-3 w-3">
             {
+              overallStatus === 'unknown' && (
+                <span class="relative inline-flex rounded-full h-3 w-3 bg-neutral-400" />
+              )
+            }
+            {
               overallStatus === 'up' && (
                 <>
                   <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
@@ -104,6 +117,7 @@ const avgUptime =
             }
           </span>
           <span class="text-sm font-semibold tracking-tight text-neutral-900 dark:text-neutral-100 font-sans">
+            {overallStatus === 'unknown' && 'Monitoring Status Unavailable'}
             {overallStatus === 'up' && 'All Systems Operational'}
             {overallStatus === 'degraded' && 'Partial System Degradation'}
             {overallStatus === 'down' && 'Service Outage Detected'}
@@ -134,7 +148,7 @@ const avgUptime =
                   <span
                     class:list={[
                       'inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[11px] font-mono uppercase tracking-wider',
-                      project.current_status === 'up'
+                      (project.current_status === 'up' && project.latest_check_at && Number.isFinite(Date.parse(project.latest_check_at)) && Date.now() - Date.parse(project.latest_check_at) <= 15 * 60 * 1000)
                         ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/80 dark:text-emerald-300'
                         : project.current_status === 'degraded'
                           ? 'bg-amber-100 text-amber-800 dark:bg-amber-950/80 dark:text-amber-300'
@@ -148,7 +162,7 @@ const avgUptime =
                     <span
                       class:list={[
                         'w-1.5 h-1.5 rounded-full',
-                        project.current_status === 'up'
+                        (project.current_status === 'up' && project.latest_check_at && Number.isFinite(Date.parse(project.latest_check_at)) && Date.now() - Date.parse(project.latest_check_at) <= 15 * 60 * 1000)
                           ? 'bg-emerald-500'
                           : project.current_status === 'degraded'
                             ? 'bg-amber-500'
@@ -157,7 +171,7 @@ const avgUptime =
                               : 'bg-neutral-400',
                       ]}
                     />
-                    {project.current_status === 'up'
+                    {(project.current_status === 'up' && project.latest_check_at && Number.isFinite(Date.parse(project.latest_check_at)) && Date.now() - Date.parse(project.latest_check_at) <= 15 * 60 * 1000)
                       ? strings.projects.statusUp
                       : project.current_status === 'degraded'
                         ? strings.projects.statusDegraded
