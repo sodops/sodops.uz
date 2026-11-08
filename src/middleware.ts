@@ -146,9 +146,8 @@ export const onRequest = defineMiddleware(async (context, next) => {
     "'sha256-hG8Kp+fYqr9xLENy/bYaRcb9Z0JE7h55rIwwd8OVPMw='", // client:visible module
   ];
 
-  const scriptSrcDirective = isAdmin
-    ? "script-src 'self' 'unsafe-inline'"
-    : `script-src 'self' https://static.cloudflareinsights.com ${islandHashes.join(' ')}`;
+  // The admin dashboard JavaScript is served from /admin.js; no inline exception is needed.
+  const scriptSrcDirective = `script-src 'self' https://static.cloudflareinsights.com ${islandHashes.join(' ')}`;
 
   const cspDirectives = [
     "default-src 'self'",
