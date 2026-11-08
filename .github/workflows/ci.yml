@@ -141,6 +141,9 @@ jobs:
       - name: Build preview assets
         run: pnpm build
 
+      - name: Strip production data bindings from preview build
+        run: node scripts/prepare-preview-build.mjs
+
       - name: Verify Cloudflare credentials
         env:
           CF_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
