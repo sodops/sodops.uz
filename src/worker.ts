@@ -3,6 +3,7 @@
 
 import { handle } from '@astrojs/cloudflare/handler';
 import { runStatusChecks } from './lib/status';
+import { ensureTrueSurvivalLandingMonitor } from './lib/true-survival-monitor';
 
 export type WorkerEnv = Env;
 
@@ -38,7 +39,19 @@ export default {
     const scheduledAt = new Date(controller.scheduledTime).toISOString();
     console.log(`[Worker Scheduled Cron] Fired at ${scheduledAt} (cron: ${controller.cron})`);
     ctx.waitUntil(
-      runStatusChecks(env, ctx)
+      (async () => {
+        // Correct the legacy monitor via D1 binding, without modifying
+        // the True Survival landing Worker or using Cloudflare API credentials.
+        if (env.DB) {
+          try {
+            const migrated = await ensureTrueSurvivalLandingMonitor(env.DB);
+            if (migrated) console.log('[Worker Cron] True Survival landing monitor migrated.');
+          } catch (error) {
+            console.error('[Worker Cron] True Survival monitoring migration failed:', error);
+          }
+        }
+        return runStatusChecks(env, ctx);
+      })()
         .then((results) => {
           console.log(
             `[Worker Scheduled Cron] Completed status checks for ${results.length} endpoints:`,

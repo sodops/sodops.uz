@@ -1,5 +1,5 @@
 -- scripts/seed-projects.sql
--- Strictly seeds ONLY user-owned projects: sodops.uz and mc.sodops.uz
+-- Strictly seeds ONLY user-owned projects: sodops.uz and True Survival landing / future game server
 -- Real status measurement only: history starts completely empty.
 
 -- 1. Clean up any existing projects, raw checks, and aggregates
@@ -42,17 +42,33 @@ INSERT INTO projects (
 ),
 (
   'proj_mc_sodops_uz',
-  'mc.sodops.uz',
-  'TODO(sodiq)',
+  'True Survival Minecraft Server',
+  'Coming soon. The game server has not been provisioned; no VDS is running yet.',
   'https://mc.sodops.uz',
   NULL,
   NULL,
-  '["Infrastructure", "Self-Hosted"]',
-  1,
-  2,
+  '["Minecraft", "Coming Soon"]',
+  0,
+  3,
   0,
   'minecraft',
   'mc.sodops.uz',
   25565,
   'paused'
+),
+(
+  'proj_true_survival_landing',
+  'True Survival Landing Page',
+  'Minecraft community landing page is live. The game server itself is coming soon.',
+  'https://mc.sodops.uz',
+  NULL,
+  'https://mc.sodops.uz',
+  '["Cloudflare Workers", "Landing Page", "Minecraft"]',
+  1,
+  2,
+  0,
+  'http',
+  'mc.sodops.uz',
+  443,
+  'active'
 );
