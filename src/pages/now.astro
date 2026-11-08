@@ -9,12 +9,12 @@ Astro.cache.set({ maxAge: 3600, swr: 86400, tags: ['pages'] });
 const lastUpdated = '2026-11-08';
 ---
 
-<BaseLayout title=<span data-edit-key="now.title">{getSiteCopy(Astro.locals,'now.title')}</span> description={strings.now.description}>
+<BaseLayout title={getSiteCopy(Astro.locals,'now.title')} description={strings.now.description}>
   <div class="space-y-8">
     <header class="space-y-3 border-b border-neutral-200/60 dark:border-neutral-800/60 pb-6">
       <div class="flex flex-wrap items-center justify-between gap-3">
         <h1 class="text-2xl sm:text-3xl font-semibold tracking-tight text-neutral-900 dark:text-neutral-100">
-          {strings.now.title}
+          <span data-edit-key="now.title">{getSiteCopy(Astro.locals,'now.title')}</span>
         </h1>
         <time
           datetime={lastUpdated}
