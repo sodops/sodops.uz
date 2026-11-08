@@ -52,8 +52,8 @@ const avgUptime =
 ---
 
 <BaseLayout
-  title={strings.projects.title}
-  description={strings.projects.description}
+  title={getSiteCopy(Astro.locals,'projects.title')}
+  description={getSiteCopy(Astro.locals,'projects.description')}
 >
   <div class="space-y-8">
     <!-- Header -->
