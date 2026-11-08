@@ -17,6 +17,7 @@ if (!slug) {
 import { env } from 'cloudflare:workers';
 
 let postTitle = '';
+let postId: string | null = null;
 let postExcerpt = '';
 let postPublishedAt = new Date();
 let postReadingTime = 1;
@@ -31,6 +32,7 @@ if (env?.DB) {
   try {
     const d1Post = await getPostBySlug(env.DB, slug);
     if (d1Post) {
+      postId = d1Post.id;
       postTitle = d1Post.title;
       postExcerpt = d1Post.excerpt;
       postPublishedAt = new Date(d1Post.published_at || d1Post.created_at);
@@ -168,7 +170,7 @@ const schemaOrgArticle = {
       <h1
         class="text-2xl sm:text-3xl font-semibold tracking-tight text-neutral-900 dark:text-neutral-100 font-sans leading-tight"
       >
-        {postTitle}
+        <span data-post-id={postId || undefined}>{postTitle}</span>
       </h1>
 
       <div

@@ -1,60 +1,46 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro';
 import { strings } from '../lib/strings';
+import { getSiteCopy, type SiteCopyKey } from '../lib/site-content';
 
 export const prerender = false;
 Astro.cache.set({ maxAge: 3600, swr: 86400, tags: ['pages'] });
 
 // Keep this list grounded in the site's public code and infrastructure.
-const categories = [
-  {
-    title: 'Cloud & Delivery',
-    items: [
-      { name: 'Cloudflare Workers', description: 'Edge runtime for sodops.uz and scheduled monitoring tasks.' },
-      { name: 'Cloudflare D1 & KV', description: 'SQL-backed publishing, uptime metrics, and session storage.' },
-      { name: 'GitHub Actions', description: 'Automated linting, tests, builds, and production release checks.' },
-    ],
-  },
-  {
-    title: 'Development',
-    items: [
-      { name: 'Astro & TypeScript', description: 'Server-rendered pages, typed APIs, and a lightweight frontend.' },
-      { name: 'Tailwind CSS & Preact', description: 'Responsive styling and focused interactive components.' },
-      { name: 'Playwright', description: 'Browser-level checks for responsiveness, accessibility, and critical interactions.' },
-    ],
-  },
-  {
-    title: 'Infrastructure & Observability',
-    items: [
-      { name: 'Containers', description: 'Docker and Kubernetes (k3s) for infrastructure experiments.' },
-      { name: 'Monitoring', description: 'Prometheus, Grafana, and Loki for metrics, dashboards, and logs.' },
-      { name: 'Linux', description: 'Command-line tooling, scripting, and day-to-day DevOps workflows.' },
-    ],
-  },
-];
+const copy = (key: SiteCopyKey) => getSiteCopy(Astro.locals, key);
+const categories = (['cloud','dev','infra'] as const).map((id) => ({
+  id,
+  title: copy(`uses.${id}.title`),
+  items: [0,1,2].map((index) => ({
+    index,
+    name: copy(`uses.${id}.${index}.name` as SiteCopyKey),
+    description: copy(`uses.${id}.${index}.description` as SiteCopyKey),
+  })),
+}));
+
 ---
 
-<BaseLayout title={strings.uses.title} description={strings.uses.description}>
+<BaseLayout title={copy('uses.title')} description={copy('uses.description')}>
   <div class="space-y-8">
     <header class="space-y-2 border-b border-neutral-200/60 dark:border-neutral-800/60 pb-6">
       <h1 class="text-2xl sm:text-3xl font-semibold tracking-tight text-neutral-900 dark:text-neutral-100">
-        {strings.uses.title}
+        <span data-edit-key="uses.title">{copy('uses.title')}</span>
       </h1>
       <p class="text-sm sm:text-base text-neutral-600 dark:text-neutral-400">
-        {strings.uses.description}
+        <span data-edit-key="uses.description">{copy('uses.description')}</span>
       </p>
     </header>
     <div class="space-y-10">
       {categories.map((category) => (
         <section class="space-y-4">
           <h2 class="text-sm font-semibold tracking-wider uppercase text-neutral-600 dark:text-neutral-400 font-mono">
-            {category.title}
+            <span data-edit-key={`uses.${category.id}.title`}>{category.title}</span>
           </h2>
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
             {category.items.map((item) => (
               <div class="p-4 rounded-lg border border-neutral-200/70 dark:border-neutral-800/70 bg-white/40 dark:bg-neutral-900/30 space-y-2">
-                <h3 class="text-sm font-medium text-neutral-900 dark:text-neutral-100">{item.name}</h3>
-                <p class="text-sm text-neutral-600 dark:text-neutral-400 leading-relaxed">{item.description}</p>
+                <h3 class="text-sm font-medium text-neutral-900 dark:text-neutral-100" data-edit-key={`uses.${category.id}.${item.index}.name`}>{item.name}</h3>
+                <p class="text-sm text-neutral-600 dark:text-neutral-400 leading-relaxed" data-edit-key={`uses.${category.id}.${item.index}.description`}>{item.description}</p>
               </div>
             ))}
           </div>

@@ -1,5 +1,6 @@
 import { defineMiddleware } from 'astro:middleware';
 import { env } from 'cloudflare:workers';
+import { loadSiteCopy } from './lib/site-content';
 import {
   authenticateAdminRequest,
   extractAccessJwt,
@@ -107,6 +108,13 @@ export const onRequest = defineMiddleware(async (context, next) => {
 
     // Pass authenticated context to route locals
     (context.locals as any).auth = auth;
+  }
+
+  // Load text overrides once for each server-rendered public page.
+  // Readers see the same content as search engines (not client-side-only copy).
+  const publicPage = /^(?:\/$|\/blog(?:\/.*)?$|\/projects\/?$|\/uses\/?$|\/now\/?)$/.test(normalizedPath);
+  if (!isAdmin && context.request.method === 'GET' && publicPage) {
+    (context.locals as any).siteCopy = await loadSiteCopy((env as any)?.DB);
   }
 
   const response = await next();

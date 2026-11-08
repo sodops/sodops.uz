@@ -1,6 +1,7 @@
 ---
 import ThemeToggle from './ThemeToggle.astro';
 import { strings } from '../lib/strings';
+import { getSiteCopy, type SiteCopyKey } from '../lib/site-content';
 
 const navItems = [
   { href: '/blog', label: strings.nav.blog },
@@ -43,7 +44,7 @@ const currentPath = Astro.url.pathname;
                       : '',
                   ]}
                 >
-                  {item.label}
+                  <span data-edit-key={`nav.${item.href.slice(1)}`}>{getSiteCopy(Astro.locals, `nav.${item.href.slice(1)}` as SiteCopyKey)}</span>
                 </a>
               </li>
             );
