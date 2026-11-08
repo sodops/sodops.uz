@@ -41,7 +41,7 @@ describe('True Survival monitoring migration', () => {
     assert.match(mock.batches[0][0].sql, /status = 'paused'/);
     assert.match(mock.batches[0][1].sql, /'http'/);
     assert.ok(mock.batches[0][1].args.includes('https://mc.sodops.uz'));
-    assert.equal(mock.batches[0].some(b => b.some(s => /DELETE FROM uptime/.test(s.sql))), false);
+    assert.equal(mock.batches[0].some(s => /DELETE FROM uptime/.test(s.sql)), false);
   });
   it('does not make changes after migration', async () => {
     const mock = makeDb({...legacy, name: 'True Survival Minecraft Server', status: 'paused'}, {id:'proj_true_survival_landing'});
