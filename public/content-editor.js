@@ -103,9 +103,11 @@
     textarea.select();
   }
 
+  var editorStarting = false;
   async function start() {
     if (new URL(window.location.href).searchParams.get('edit') !== '1') return;
-    if (document.getElementById('visual-editor-toolbar')) return;
+    if (document.getElementById('visual-editor-toolbar') || editorStarting) return;
+    editorStarting = true;
 
     var response;
     try {
@@ -120,6 +122,7 @@
       }
     } catch (error) {
       notice(error.message || 'Visual edit mode requires admin authentication.');
+      editorStarting = false;
       return;
     }
 
@@ -141,6 +144,7 @@
     bar.appendChild(exit);
     document.body.appendChild(bar);
     document.body.classList.add('visual-editor-active');
+    editorStarting = false;
 
     document.querySelectorAll('[data-edit-key]').forEach(function (target) {
       var key = target.getAttribute('data-edit-key');
