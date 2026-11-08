@@ -2,6 +2,7 @@ import { test, expect } from '@playwright/test';
 import { setupPageGuards, assertNoHorizontalOverflow } from './test-helper';
 
 const VIEWPORTS = [
+  { width: 320, height: 700, name: 'mobile-320' },
   { width: 360, height: 740, name: 'mobile-360' },
   { width: 390, height: 844, name: 'mobile-390' },
   { width: 768, height: 1024, name: 'tablet-768' },
@@ -39,7 +40,7 @@ test.describe('Playwright Matrix: Themes & Color Schemes', () => {
       await expect(page.locator('body')).toBeVisible();
       if (theme === 'dark') {
         const htmlClass = await page.locator('html').getAttribute('class');
-        expect(htmlClass?.includes('dark') || true).toBe(true);
+        expect(htmlClass).toContain('dark');
       }
       await verifyGuards();
     });
