@@ -186,7 +186,7 @@ const avgUptime =
                       aria-label={`Visit ${project.name}`}
                       class="hover:text-emerald-700 dark:hover:text-emerald-400 transition-colors inline-flex items-center gap-1"
                     >
-                      {project.name}
+                      <span data-project-id={project.id} data-project-field="name">{project.name}</span>
                       <svg
                         class="w-3.5 h-3.5 text-neutral-400 dark:text-neutral-500 inline"
                         fill="none"
@@ -257,7 +257,7 @@ const avgUptime =
               )}
 
               {/* Description */}
-              <p class="text-xs sm:text-sm text-neutral-600 dark:text-neutral-400 leading-relaxed">
+              <p class="text-xs sm:text-sm text-neutral-600 dark:text-neutral-400 leading-relaxed" data-project-id={project.id} data-project-field="description">
                 {project.description}
               </p>
 
