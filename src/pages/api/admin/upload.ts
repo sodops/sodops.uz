@@ -25,6 +25,13 @@ export const POST: APIRoute = async ({ request, locals }) => {
     });
   }
 
+  if (!env.UPLOADS_BUCKET) {
+    return new Response(JSON.stringify({ error: 'Image storage is unavailable' }), {
+      status: 503,
+      headers: { 'Content-Type': 'application/json' },
+    });
+  }
+
   try {
     const formData = await request.formData();
     const file = formData.get('file') as File;
@@ -52,13 +59,9 @@ export const POST: APIRoute = async ({ request, locals }) => {
       .toLowerCase();
     const key = `posts/${Date.now()}-${sanitizedBase}.${validation.extension}`;
 
-    if (env.UPLOADS_BUCKET) {
-      await env.UPLOADS_BUCKET.put(key, buffer, {
-        httpMetadata: {
-          contentType: validation.mimeType,
-        },
-      });
-    }
+    await env.UPLOADS_BUCKET.put(key, buffer, {
+      httpMetadata: { contentType: validation.mimeType },
+    });
 
     const publicUrl = `/images/${key}`;
     return new Response(
