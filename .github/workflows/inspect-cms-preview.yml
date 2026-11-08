@@ -32,6 +32,20 @@ jobs:
             console.log('Preview Access application found:',apps.some(x=>JSON.stringify(x.domains||x.destinations||[]).includes('preview.sodops.uz')));
             console.log('Production Access application found:',apps.some(x=>JSON.stringify(x.domains||x.destinations||[]).includes('sodops.uz')));
           }
+          const zones = await inspect('Zone lookup','/zones?name=sodops.uz');
+          if (Array.isArray(zones) && zones.length) {
+            const zoneApps = await inspect('Zone Access app lookup','/zones/'+zones[0].id+'/access/apps');
+            if (Array.isArray(zoneApps)) console.log('Zone-level Access app total:',zoneApps.length);
+          }
+          const settings = await inspect('Production Worker settings','/accounts/'+id+'/workers/scripts/sodops-uz/settings');
+          if (settings) {
+            const names = (settings.bindings||[]).map(x=>x.name);
+            console.log('Production Worker admin bindings present:',{
+              adminEmail:names.includes('ADMIN_EMAILS')||names.includes('ADMIN_EMAIL'),
+              aud:names.includes('CF_ACCESS_AUD'),
+              teamDomain:names.includes('CF_ACCESS_TEAM_DOMAIN'),
+            });
+          }
           const dbs = await inspect('D1 listing','/accounts/'+id+'/d1/database?per_page=100');
           if (Array.isArray(dbs)) console.log('D1 total:',dbs.length,'isolated preview database exists:',dbs.some(x=>/preview|staging|cms/i.test(x.name)));
           const domains = await inspect('Worker domains','/accounts/'+id+'/workers/domains');
@@ -41,7 +55,7 @@ jobs:
               console.log(host,'Worker domain exists:',Boolean(found),'service:',found?.service??'(none)');
             }
           }
-          for(const url of ['https://preview.sodops.uz/admin','https://pr-25-sodops-uz.skarimjonoff.workers.dev/admin','https://pr-25-sodops-uz.skarimjonoff.workers.dev/api/admin/content']){
+          for(const url of ['https://sodops.uz/admin','https://preview.sodops.uz/admin','https://pr-25-sodops-uz.skarimjonoff.workers.dev/admin','https://pr-25-sodops-uz.skarimjonoff.workers.dev/api/admin/content']){
             try {
               const response=await fetch(url,{redirect:'manual',signal:AbortSignal.timeout(12000)});
               console.log(url.replace(/https:\/\//,''), 'HTTP',response.status,'redirectToAccessLogin:',Boolean((response.headers.get('location')||'').includes('/cdn-cgi/access/login')));
