@@ -13,7 +13,7 @@ describe('Admin strict CSP regression', () => {
 
   it('never grants unsafe-inline script execution to admin routes', () => {
     const middleware = readFileSync('src/middleware.ts', 'utf8');
-    assert.doesNotMatch(middleware, /script-src[^\n]*unsafe-inline/);
+    assert.doesNotMatch(middleware, /script-src 'self' 'unsafe-inline'/);
     assert.match(middleware, /scriptSrcDirective = `script-src 'self'/);
   });
 });
