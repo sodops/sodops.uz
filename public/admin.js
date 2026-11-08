@@ -223,6 +223,14 @@
         });
       });
 
+      // Deep-link from an article's pencil button directly into its post editor.
+      const requestedPostId = new URLSearchParams(window.location.search).get('editPost');
+      if (requestedPostId && /^[A-Za-z0-9_-]{1,128}$/.test(requestedPostId)) {
+        const requested = Array.from(document.querySelectorAll('.edit-post-btn'))
+          .find((button) => button.dataset.id === requestedPostId);
+        if (requested) requested.click();
+      }
+
       // Delete button handler
       async function deletePostById(id, title) {
         if (!confirm(`Are you sure you want to delete "${title}"?`)) return;
