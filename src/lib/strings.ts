@@ -10,7 +10,7 @@ export const strings = {
       'DevOps-oriented developer and AI student based in Tashkent, Uzbekistan. Building fast, minimal infrastructure and systems.',
     location: 'Tashkent, Uzbekistan',
     domain: 'sodops.uz',
-    email: 'admin@example.com',
+    email: 'me@sodops.uz',
     github: 'https://github.com/sodops',
   },
   nav: {
@@ -30,7 +30,7 @@ export const strings = {
       'I build and automate systems with Docker, Kubernetes (k3s), Prometheus, Grafana, Loki, Cloudflare, and DigitalOcean.',
     bioLine3:
       'Passionate about minimal, fast web architecture, edge compute, and reliable observability.',
-    nowTeaser: 'Currently exploring local LLM agents and containerized microservices.',
+    nowTeaser: 'Improving delivery automation, observability, and this site.',
     nowLinkText: 'See what I am doing now',
     latestPosts: 'Recent Posts',
     allPosts: 'All posts',
@@ -65,7 +65,7 @@ export const strings = {
   },
   uses: {
     title: 'Uses',
-    description: 'Hardware, software, devops tooling, and homelab setup I use daily.',
+    description: 'The tools and infrastructure behind my projects and experiments.',
   },
   now: {
     title: 'Now',
