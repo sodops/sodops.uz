@@ -46,3 +46,63 @@ jobs:
 
       - name: Browser E2E Tests (Chromium)
         run: pnpm exec playwright test --project=chromium
+
+  deploy:
+    name: Deploy production (Cloudflare Workers)
+    needs: check
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    environment:
+      name: production
+      url: https://sodops.uz
+    concurrency:
+      group: cloudflare-production
+      cancel-in-progress: false
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout tested commit
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@fe02b34f77f8bc703788d5817da081398fad5dd2 # v4.0.0
+        with:
+          version: 12.14.0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@1d0ff469b7ec7b3cb9d8673fde0c81c44821de2a # v4.2.0
+        with:
+          node-version: '22.23.4'
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build production assets
+        run: pnpm build
+
+      - name: Verify Cloudflare deployment secrets
+        env:
+          CF_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CF_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          if [ -z "$CF_API_TOKEN" ] || [ -z "$CF_ACCOUNT_ID" ]; then
+            echo "::error::Production deployment requires GitHub secrets CLOUDFLARE_API_TOKEN and CLOUDFLARE_ACCOUNT_ID."
+            exit 1
+          fi
+
+      - name: Deploy Worker and static assets
+        uses: cloudflare/wrangler-action@953926a2e2182532811c01a25e53647d93bf07c0 # v4
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: deploy
+
+      - name: Install XML validator
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq libxml2-utils
+
+      - name: Verify live production
+        env:
+          PROD_URL: https://sodops.uz
+        run: pnpm qa:prod
