@@ -12,8 +12,8 @@ const navItems = [
 const currentPath = Astro.url.pathname;
 ---
 
-<header class="w-full py-6 sm:py-8">
-  <div class="max-w-[720px] mx-auto px-4 sm:px-6 flex items-center justify-between">
+<header class="w-full py-4 sm:py-8">
+  <div class="max-w-[720px] mx-auto px-4 sm:px-6 flex flex-wrap items-center justify-between gap-y-3">
     <!-- Brand / Home Link -->
     <a
       href="/"
@@ -25,8 +25,8 @@ const currentPath = Astro.url.pathname;
     </a>
 
     <!-- Navigation & Icons -->
-    <nav class="flex items-center gap-2 sm:gap-6 text-xs sm:text-sm" aria-label="Main navigation">
-      <ul class="flex items-center gap-2 sm:gap-5 text-neutral-600 dark:text-neutral-400">
+    <nav class="flex flex-wrap items-center justify-end gap-2 sm:gap-6 text-sm max-[420px]:w-full max-[420px]:justify-between" aria-label="Main navigation">
+      <ul class="flex items-center gap-1 sm:gap-5 text-neutral-600 dark:text-neutral-400">
         {
           navItems.map((item) => {
             const isActive =
@@ -37,7 +37,7 @@ const currentPath = Astro.url.pathname;
                 <a
                   href={item.href}
                   class:list={[
-                    'transition-colors hover:text-neutral-900 dark:hover:text-neutral-100',
+                    'inline-flex min-h-11 items-center px-1.5 sm:px-0 transition-colors hover:text-neutral-900 dark:hover:text-neutral-100',
                     isActive
                       ? 'text-neutral-900 dark:text-neutral-100 font-medium underline underline-offset-4 decoration-emerald-500/60'
                       : '',
@@ -61,7 +61,7 @@ const currentPath = Astro.url.pathname;
           href="/feed.xml"
           title={strings.nav.rss}
           aria-label={strings.nav.rss}
-          class="hidden sm:inline-flex items-center justify-center w-8 h-8 rounded hover:text-neutral-900 dark:hover:text-neutral-100 transition-colors focus-visible:ring-1 focus-visible:ring-emerald-500"
+          class="hidden sm:inline-flex items-center justify-center w-11 h-11 rounded hover:text-neutral-900 dark:hover:text-neutral-100 transition-colors focus-visible:ring-1 focus-visible:ring-emerald-500"
         >
           <svg
             class="w-4 h-4"
@@ -104,7 +104,7 @@ const currentPath = Astro.url.pathname;
           id="cmd-k-trigger"
           title="Command Palette (Cmd+K / Ctrl+K)"
           aria-label="⌘K - Open command palette"
-          class="inline-flex items-center gap-1.5 px-1.5 sm:px-2 py-1 rounded text-xs font-mono text-neutral-700 hover:text-neutral-900 dark:text-neutral-300 dark:hover:text-neutral-100 bg-neutral-100/90 dark:bg-neutral-800/90 hover:bg-neutral-200 dark:hover:bg-neutral-700/80 transition-colors focus-visible:ring-1 focus-visible:ring-emerald-500 cursor-pointer"
+          class="inline-flex items-center justify-center min-w-11 min-h-11 gap-1.5 px-1.5 sm:px-2 py-1 rounded text-xs font-mono text-neutral-700 hover:text-neutral-900 dark:text-neutral-300 dark:hover:text-neutral-100 bg-neutral-100/90 dark:bg-neutral-800/90 hover:bg-neutral-200 dark:hover:bg-neutral-700/80 transition-colors focus-visible:ring-1 focus-visible:ring-emerald-500 cursor-pointer"
         >
           <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2" aria-hidden="true">
             <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
