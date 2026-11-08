@@ -37,4 +37,14 @@
     "CF_ACCESS_TEAM_DOMAIN": "sodops.cloudflareaccess.com",
     "SITE_INDEXING": "off",
   },
+
+  // Isolated per-PR Worker Previews. No production D1, KV, R2, cron,
+  // admin credentials or other data-bearing resources are shared.
+  "previews": {
+    "vars": {
+      "SITE_URL": "https://sodops.uz",
+      "SITE_INDEXING": "off",
+      "PREVIEW_MODE": "true",
+    },
+  },
 }
