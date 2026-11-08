@@ -1,7 +1,7 @@
 ---
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import { resolveAdminAuth } from '../../lib/admin-request-auth';
-import { getAllPosts } from '../../lib/db';
+import { getAllPostSummaries } from '../../lib/db';
 
 import { env } from 'cloudflare:workers';
 
@@ -13,7 +13,7 @@ const isAuthenticated = auth.authenticated;
 if (!isAuthenticated) {
   Astro.response.status = 401;
 }
-const initialPosts = isAuthenticated && env.DB ? await getAllPosts(env.DB) : [];
+const initialPosts = isAuthenticated && env.DB ? await getAllPostSummaries(env.DB) : [];
 ---
 
 <BaseLayout
@@ -135,7 +135,6 @@ const initialPosts = isAuthenticated && env.DB ? await getAllPosts(env.DB) : [];
                       data-id={post.id}
                       data-title={post.title}
                       data-slug={post.slug}
-                      data-content={post.content}
                       data-excerpt={post.excerpt}
                       data-tags={post.tags.join(', ')}
                       data-published={post.published ? 'true' : 'false'}
