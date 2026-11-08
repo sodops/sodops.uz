@@ -1,0 +1,36 @@
+name: Verify True Survival live monitoring migration
+on:
+  push:
+    branches: [ops/inspect-mc-landing]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check landing endpoint and wait for cron project migration
+        run: |
+          node --input-type=module <<'JS'
+          const landing=await fetch('https://mc.sodops.uz/',{redirect:'manual',signal:AbortSignal.timeout(10000)});
+          const body=await landing.text();
+          const title=(body.match(/<title[^>]*>([^<]+)<\/title>/i)||[])[1]||'(title not found)';
+          console.log('Landing HTTPS:',landing.status,'title:',title.slice(0,100));
+          if(landing.status!==200) throw new Error('Landing HTTP is not 200');
+          let verified=false;
+          for(let i=0;i<42;i++){
+            const url='https://sodops.uz/projects?_verify_mc='+Date.now()+'-'+i;
+            try {
+              const response=await fetch(url,{headers:{'Cache-Control':'no-cache'},signal:AbortSignal.timeout(10000)});
+              const html=await response.text();
+              const landingFound=html.includes('True Survival Landing Page');
+              const serverFound=html.includes('True Survival Minecraft Server');
+              console.log('Check',i+1,'HTTP',response.status,'landing',landingFound,'gameServer',serverFound);
+              if(response.status===200&&landingFound&&serverFound) {verified=true;break;}
+            } catch(e){console.log('Check failed:',String(e.message).slice(0,100));}
+            await new Promise(resolve=>setTimeout(resolve,10000));
+          }
+          if(!verified)throw new Error('Live D1 project migration not visible within verification window');
+          console.log('SUCCESS: live landing page and separate paused game service projects are visible.');
+          JS
