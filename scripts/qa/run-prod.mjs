@@ -25,7 +25,14 @@ const results = [];
 async function auditHeaders() {
   console.log(`[1/3] Auditing Security Headers on ${PROD_URL}...`);
   try {
-    const res = await fetch(PROD_URL, { redirect: 'manual' });
+    // Avoid a false SEO regression from a previous release's SWR CDN cache.
+    // Validate the deployed Worker using a unique query-key instead.
+    const probeUrl = new URL('/', PROD_URL);
+    probeUrl.searchParams.set('_qa_release', `${process.env.GITHUB_SHA || 'manual'}-${Date.now()}`);
+    const res = await fetch(probeUrl, {
+      redirect: 'manual',
+      headers: { 'Cache-Control': 'no-cache' },
+    });
     const headers = res.headers;
 
     const hsts = headers.get('strict-transport-security') || '';
