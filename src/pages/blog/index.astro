@@ -2,6 +2,7 @@
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import { getCollection } from 'astro:content';
 import { strings } from '../../lib/strings';
+import { getSiteCopy } from '../../lib/site-content';
 import { getPublishedPosts } from '../../lib/db';
 
 // Required: On-demand rendering with Cloudflare edge caching
@@ -88,10 +89,10 @@ function formatDate(date: Date): string {
       <h1
         class="text-2xl sm:text-3xl font-semibold tracking-tight text-neutral-900 dark:text-neutral-100 font-sans"
       >
-        {strings.blog.title}
+        <span data-edit-key="blog.title">{getSiteCopy(Astro.locals,'blog.title')}</span>
       </h1>
       <p class="text-sm text-neutral-600 dark:text-neutral-400">
-        {strings.blog.description}
+        <span data-edit-key="blog.description">{getSiteCopy(Astro.locals,'blog.description')}</span>
       </p>
     </header>
 
