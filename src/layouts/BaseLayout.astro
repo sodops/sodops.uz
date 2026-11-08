@@ -51,7 +51,7 @@ const siteIndexing = (
     />
 
     {
-      siteIndexing !== 'on' ? (
+      (siteIndexing !== 'on' || Astro.url.hostname !== 'sodops.uz') ? (
         <meta name="robots" content="noindex, nofollow" />
       ) : (
         <meta name="robots" content="index, follow" />
