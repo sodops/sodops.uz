@@ -3,70 +3,56 @@ import BaseLayout from '../layouts/BaseLayout.astro';
 import { strings } from '../lib/strings';
 
 export const prerender = false;
+Astro.cache.set({ maxAge: 3600, swr: 86400, tags: ['pages'] });
 
-// Edge cache tags: 1h TTL, 1d stale-while-revalidate, tagged with 'pages'
-Astro.cache.set({
-  maxAge: 3600,
-  swr: 86400,
-  tags: ['pages'],
-});
-
-const lastUpdated = 'TODO(sodiq)';
+const lastUpdated = '2026-11-08';
 ---
 
-<BaseLayout
-  title={strings.now.title}
-  description={strings.now.description}
->
+<BaseLayout title={strings.now.title} description={strings.now.description}>
   <div class="space-y-8">
-    <header class="space-y-2">
-      <div class="flex items-center justify-between">
-        <h1 class="text-2xl sm:text-3xl font-bold tracking-tight text-neutral-900 dark:text-neutral-100 font-sans">
+    <header class="space-y-3 border-b border-neutral-200/60 dark:border-neutral-800/60 pb-6">
+      <div class="flex flex-wrap items-center justify-between gap-3">
+        <h1 class="text-2xl sm:text-3xl font-semibold tracking-tight text-neutral-900 dark:text-neutral-100">
           {strings.now.title}
         </h1>
-        <span class="text-xs font-mono text-neutral-600 dark:text-neutral-400 bg-neutral-100 dark:bg-neutral-800/80 px-2 py-0.5 rounded border border-neutral-200/60 dark:border-neutral-700/60">
+        <time
+          datetime={lastUpdated}
+          class="text-xs font-mono text-neutral-600 dark:text-neutral-400 bg-neutral-100 dark:bg-neutral-800/80 px-2.5 py-1 rounded border border-neutral-200/60 dark:border-neutral-700/60"
+        >
           {strings.now.updated}: {lastUpdated}
-        </span>
+        </time>
       </div>
-      <p class="text-sm text-neutral-600 dark:text-neutral-400 font-mono">
-        Now page inspired by Derek Sivers, outlining current focus and priorities.
+      <p class="text-sm sm:text-base text-neutral-600 dark:text-neutral-400">
+        A short snapshot of the engineering work and subjects I'm focusing on.
       </p>
     </header>
 
-    <div class="space-y-6 text-sm sm:text-base text-neutral-700 dark:text-neutral-300 leading-relaxed font-sans">
-      <section class="space-y-2">
-        <h2 class="text-base font-semibold text-neutral-900 dark:text-neutral-100 font-sans">
-          Location
-        </h2>
+    <div class="space-y-8 text-sm sm:text-base text-neutral-700 dark:text-neutral-300 leading-relaxed">
+      <section class="space-y-3">
+        <h2 class="text-base font-semibold text-neutral-900 dark:text-neutral-100">Engineering</h2>
         <p>
-          Based in <strong class="text-neutral-900 dark:text-neutral-100">Tashkent, Uzbekistan</strong>.
+          Improving this website's publishing workflow, operational monitoring, release
+          automation, and accessibility. The site runs on Astro and Cloudflare Workers.
         </p>
+        <a href="/projects" class="inline-flex text-sm font-medium text-emerald-700 dark:text-emerald-400 underline underline-offset-4 hover:text-emerald-800 dark:hover:text-emerald-300">
+          Explore the projects &rarr;
+        </a>
       </section>
 
-      <section class="space-y-2">
-        <h2 class="text-base font-semibold text-neutral-900 dark:text-neutral-100 font-sans">
-          Current Focus
-        </h2>
-        <ul class="list-disc pl-5 space-y-1.5 text-neutral-600 dark:text-neutral-400 text-sm">
-          <li>
-            DevOps-oriented development with Docker, Kubernetes (k3s), Prometheus, Grafana, Loki, Cloudflare, and DigitalOcean.
-          </li>
-          <li>
-            AI studies.
-          </li>
-          <li>
-            TODO(sodiq): Add specific active projects and focus areas.
-          </li>
-        </ul>
+      <section class="space-y-3">
+        <h2 class="text-base font-semibold text-neutral-900 dark:text-neutral-100">Learning &amp; practice</h2>
+        <p>
+          Exploring Linux, containers, CI/CD, and observability alongside AI studies.
+          I share notes and technical lessons as I build.
+        </p>
+        <a href="/blog" class="inline-flex text-sm font-medium text-emerald-700 dark:text-emerald-400 underline underline-offset-4 hover:text-emerald-800 dark:hover:text-emerald-300">
+          Read the writing &rarr;
+        </a>
       </section>
 
-      <section class="space-y-2">
-        <h2 class="text-base font-semibold text-neutral-900 dark:text-neutral-100 font-sans">
-          Learning & Research
-        </h2>
-        <p class="text-neutral-600 dark:text-neutral-400 text-sm">
-          TODO(sodiq): Specify current reading list, research papers, or courses.
-        </p>
+      <section class="space-y-3">
+        <h2 class="text-base font-semibold text-neutral-900 dark:text-neutral-100">Location</h2>
+        <p>Based in Tashkent, Uzbekistan.</p>
       </section>
     </div>
   </div>
