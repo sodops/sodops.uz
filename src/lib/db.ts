@@ -34,7 +34,7 @@ export interface Tag {
  * Retrieves all published posts ordered by published_at DESC.
  * Runs in < 2ms on Cloudflare D1.
  */
-export async function getPublishedPosts(db?: D1Database): Promise<PostWithTags[]> {
+export async function getPublishedPosts(db?: D1Database): Promise<PostSummaryWithTags[]> {
   if (!db) return [];
 
   const query = `
