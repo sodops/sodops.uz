@@ -3,107 +3,58 @@ import BaseLayout from '../layouts/BaseLayout.astro';
 import { strings } from '../lib/strings';
 
 export const prerender = false;
+Astro.cache.set({ maxAge: 3600, swr: 86400, tags: ['pages'] });
 
-// Edge cache tags: 1h TTL, 1d stale-while-revalidate, tagged with 'pages'
-Astro.cache.set({
-  maxAge: 3600,
-  swr: 86400,
-  tags: ['pages'],
-});
-
+// Keep this list grounded in the site's public code and infrastructure.
 const categories = [
   {
-    title: 'Hardware & Workstation',
+    title: 'Cloud & Delivery',
     items: [
-      {
-        name: 'Workstation Laptop',
-        description: 'TODO(sodiq): Specify workstation hardware and specs.',
-      },
-      {
-        name: 'Display & Peripherals',
-        description: 'TODO(sodiq): Specify monitors, keyboard, and peripherals.',
-      },
+      { name: 'Cloudflare Workers', description: 'Edge runtime for sodops.uz and scheduled monitoring tasks.' },
+      { name: 'Cloudflare D1 & KV', description: 'SQL-backed publishing, uptime metrics, and session storage.' },
+      { name: 'GitHub Actions', description: 'Automated linting, tests, builds, and production release checks.' },
     ],
   },
   {
-    title: 'Operating System & Terminal',
+    title: 'Development',
     items: [
-      {
-        name: 'Operating System',
-        description: 'TODO(sodiq): Specify Linux distribution and window environment.',
-      },
-      {
-        name: 'Terminal & Shell',
-        description: 'TODO(sodiq): Specify shell, terminal emulator, and multiplexer.',
-      },
-      {
-        name: 'CLI Utilities',
-        description: 'TODO(sodiq): Specify core CLI utilities and daily workflow tools.',
-      },
+      { name: 'Astro & TypeScript', description: 'Server-rendered pages, typed APIs, and a lightweight frontend.' },
+      { name: 'Tailwind CSS & Preact', description: 'Responsive styling and focused interactive components.' },
+      { name: 'Playwright', description: 'Browser-level checks for responsiveness, accessibility, and critical interactions.' },
     ],
   },
   {
-    title: 'DevOps & Infrastructure Stack',
+    title: 'Infrastructure & Observability',
     items: [
-      {
-        name: 'Containers & Orchestration',
-        description: 'Docker and Kubernetes (k3s).',
-      },
-      {
-        name: 'Observability & Monitoring',
-        description: 'Prometheus, Grafana, and Loki.',
-      },
-      {
-        name: 'Cloud & Edge Providers',
-        description: 'Cloudflare and DigitalOcean.',
-      },
-    ],
-  },
-  {
-    title: 'Development & Tools',
-    items: [
-      {
-        name: 'Editor',
-        description: 'TODO(sodiq): Specify primary editor, IDE, and keybindings.',
-      },
-      {
-        name: 'Languages & Environment',
-        description: 'TODO(sodiq): Specify languages and runtimes.',
-      },
+      { name: 'Containers', description: 'Docker and Kubernetes (k3s) for infrastructure experiments.' },
+      { name: 'Monitoring', description: 'Prometheus, Grafana, and Loki for metrics, dashboards, and logs.' },
+      { name: 'Linux', description: 'Command-line tooling, scripting, and day-to-day DevOps workflows.' },
     ],
   },
 ];
 ---
 
-<BaseLayout
-  title={strings.uses.title}
-  description={strings.uses.description}
->
+<BaseLayout title={strings.uses.title} description={strings.uses.description}>
   <div class="space-y-8">
-    <header class="space-y-2">
-      <h1 class="text-2xl sm:text-3xl font-bold tracking-tight text-neutral-900 dark:text-neutral-100 font-sans">
+    <header class="space-y-2 border-b border-neutral-200/60 dark:border-neutral-800/60 pb-6">
+      <h1 class="text-2xl sm:text-3xl font-semibold tracking-tight text-neutral-900 dark:text-neutral-100">
         {strings.uses.title}
       </h1>
-      <p class="text-sm sm:text-base text-neutral-600 dark:text-neutral-400 font-sans">
+      <p class="text-sm sm:text-base text-neutral-600 dark:text-neutral-400">
         {strings.uses.description}
       </p>
     </header>
-
-    <div class="space-y-10 pt-2">
+    <div class="space-y-10">
       {categories.map((category) => (
         <section class="space-y-4">
           <h2 class="text-sm font-semibold tracking-wider uppercase text-neutral-600 dark:text-neutral-400 font-mono">
             {category.title}
           </h2>
-          <div class="grid grid-cols-1 gap-3">
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
             {category.items.map((item) => (
-              <div class="p-4 rounded-lg border border-neutral-200/70 dark:border-neutral-800/70 bg-white/40 dark:bg-neutral-900/30 space-y-1">
-                <div class="text-sm font-medium text-neutral-900 dark:text-neutral-100 font-sans">
-                  {item.name}
-                </div>
-                <div class="text-xs sm:text-sm text-neutral-600 dark:text-neutral-400 leading-relaxed font-sans">
-                  {item.description}
-                </div>
+              <div class="p-4 rounded-lg border border-neutral-200/70 dark:border-neutral-800/70 bg-white/40 dark:bg-neutral-900/30 space-y-2">
+                <h3 class="text-sm font-medium text-neutral-900 dark:text-neutral-100">{item.name}</h3>
+                <p class="text-sm text-neutral-600 dark:text-neutral-400 leading-relaxed">{item.description}</p>
               </div>
             ))}
           </div>

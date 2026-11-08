@@ -31,12 +31,16 @@ export const GET: APIRoute = async ({ locals }) => {
   let postUrls: Array<{ loc: string; lastmod?: string }> = [];
 
   if (env?.DB) {
-    const d1Posts = await getPublishedPosts(env.DB);
-    if (d1Posts.length > 0) {
-      postUrls = d1Posts.map((p) => ({
-        loc: `${baseUrl}/blog/${p.slug}`,
-        lastmod: (p.updated_at || p.published_at || '').split('T')[0],
-      }));
+    try {
+      const d1Posts = await getPublishedPosts(env.DB);
+      if (d1Posts.length > 0) {
+        postUrls = d1Posts.map((p) => ({
+          loc: `${baseUrl}/blog/${p.slug}`,
+          lastmod: (p.updated_at || p.published_at || '').split('T')[0],
+        }));
+      }
+    } catch (error) {
+      console.warn('[Sitemap] D1 unavailable; serving published content collection instead', error);
     }
   }
 
