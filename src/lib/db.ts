@@ -22,6 +22,8 @@ export interface PostWithTags extends Post {
   tags: string[];
 }
 
+export type PostSummaryWithTags = Omit<PostWithTags, 'content' | 'content_html'>;
+
 export interface Tag {
   id: string;
   name: string;
@@ -76,6 +78,27 @@ export async function getAllPosts(db?: D1Database): Promise<PostWithTags[]> {
   `;
 
   const { results } = await db.prepare(query).all();
+  return (results || []).map((row: any) => ({
+    ...row,
+    tags: row.tags_str ? row.tags_str.split(',') : [],
+  }));
+}
+
+/**
+ * Admin list view only needs metadata. Fetch full content on edit via getPostById.
+ */
+export async function getAllPostSummaries(db?: D1Database): Promise<PostSummaryWithTags[]> {
+  if (!db) return [];
+  const { results } = await db.prepare(`
+    SELECT p.id, p.slug, p.title, p.excerpt, p.cover_image, p.published,
+           p.published_at, p.created_at, p.updated_at, p.reading_time_minutes,
+           GROUP_CONCAT(t.name) as tags_str
+    FROM posts p
+    LEFT JOIN post_tags pt ON p.id = pt.post_id
+    LEFT JOIN tags t ON pt.tag_id = t.id
+    GROUP BY p.id
+    ORDER BY p.updated_at DESC;
+  `).all();
   return (results || []).map((row: any) => ({
     ...row,
     tags: row.tags_str ? row.tags_str.split(',') : [],
