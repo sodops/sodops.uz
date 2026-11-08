@@ -197,24 +197,10 @@ export async function savePost(
     id = `post_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
   }
 
-  // Insert or Replace post
-  await db
-    .prepare(
-      `INSERT INTO posts (id, slug, title, content, content_html, excerpt, cover_image, published, published_at, updated_at, reading_time_minutes)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-       ON CONFLICT(id) DO UPDATE SET
-         slug = excluded.slug,
-         title = excluded.title,
-         content = excluded.content,
-         content_html = excluded.content_html,
-         excerpt = excluded.excerpt,
-         cover_image = excluded.cover_image,
-         published = excluded.published,
-         published_at = CASE WHEN excluded.published = 1 AND posts.published_at IS NULL THEN excluded.published_at ELSE posts.published_at END,
-         updated_at = excluded.updated_at,
-         reading_time_minutes = excluded.reading_time_minutes;`
-    )
-    .bind(
+  // D1 batch executes the post and tag mutations atomically.
+  const statements = [
+    db.prepare()
+        .bind(
       id,
       slug,
       title,
@@ -226,33 +212,25 @@ export async function savePost(
       publishedAt,
       now,
       readingTime
-    )
-    .run();
+    ),
+  ];
 
-  // Update tags
   if (data.tags) {
-    // Delete existing post_tags
-    await db.prepare('DELETE FROM post_tags WHERE post_id = ?').bind(id).run();
-
+    statements.push(db.prepare('DELETE FROM post_tags WHERE post_id = ?').bind(id));
     for (const rawTag of data.tags) {
       const tagName = rawTag.trim();
       if (!tagName) continue;
       const tagSlug = tagName.toLowerCase().replace(/[^a-z0-9]/g, '-');
       const tagId = `tag_${tagSlug.replace(/-/g, '_')}`;
-
-      // Insert tag if not exists
-      await db
-        .prepare('INSERT OR IGNORE INTO tags (id, name, slug) VALUES (?, ?, ?)')
-        .bind(tagId, tagName, tagSlug)
-        .run();
-
-      // Link post_tags
-      await db
-        .prepare('INSERT OR IGNORE INTO post_tags (post_id, tag_id) VALUES (?, ?)')
-        .bind(id, tagId)
-        .run();
+      statements.push(
+        db.prepare('INSERT OR IGNORE INTO tags (id, name, slug) VALUES (?, ?, ?)')
+          .bind(tagId, tagName, tagSlug),
+        db.prepare('INSERT OR IGNORE INTO post_tags (post_id, tag_id) VALUES (?, ?)')
+          .bind(id, tagId)
+      );
     }
   }
+  await db.batch(statements);
 
   const saved = await getPostById(db, id);
   if (!saved) throw new Error('Failed to retrieve post after save');
@@ -263,8 +241,10 @@ export async function savePost(
  * Deletes a post from D1.
  */
 export async function deletePost(db: D1Database, id: string): Promise<boolean> {
-  await db.prepare('DELETE FROM post_tags WHERE post_id = ?').bind(id).run();
-  const res = await db.prepare('DELETE FROM posts WHERE id = ?').bind(id).run();
+  const [, res] = await db.batch([
+    db.prepare('DELETE FROM post_tags WHERE post_id = ?').bind(id),
+    db.prepare('DELETE FROM posts WHERE id = ?').bind(id),
+  ]);
   return (res.meta.changes || 0) > 0;
 }
 
