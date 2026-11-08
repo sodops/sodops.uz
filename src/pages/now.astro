@@ -1,6 +1,7 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro';
 import { strings } from '../lib/strings';
+import { getSiteCopy } from '../lib/site-content';
 
 export const prerender = false;
 Astro.cache.set({ maxAge: 3600, swr: 86400, tags: ['pages'] });
@@ -8,7 +9,7 @@ Astro.cache.set({ maxAge: 3600, swr: 86400, tags: ['pages'] });
 const lastUpdated = '2026-11-08';
 ---
 
-<BaseLayout title={strings.now.title} description={strings.now.description}>
+<BaseLayout title=<span data-edit-key="now.title">{getSiteCopy(Astro.locals,'now.title')}</span> description={strings.now.description}>
   <div class="space-y-8">
     <header class="space-y-3 border-b border-neutral-200/60 dark:border-neutral-800/60 pb-6">
       <div class="flex flex-wrap items-center justify-between gap-3">
@@ -23,36 +24,34 @@ const lastUpdated = '2026-11-08';
         </time>
       </div>
       <p class="text-sm sm:text-base text-neutral-600 dark:text-neutral-400">
-        A short snapshot of the engineering work and subjects I'm focusing on.
+        <span data-edit-key="now.intro">{getSiteCopy(Astro.locals,'now.intro')}</span>
       </p>
     </header>
 
     <div class="space-y-8 text-sm sm:text-base text-neutral-700 dark:text-neutral-300 leading-relaxed">
       <section class="space-y-3">
-        <h2 class="text-base font-semibold text-neutral-900 dark:text-neutral-100">Engineering</h2>
+        <h2 class="text-base font-semibold text-neutral-900 dark:text-neutral-100" data-edit-key="now.engineering.title">{getSiteCopy(Astro.locals,"now.engineering.title")}</h2>
         <p>
-          Improving this website's publishing workflow, operational monitoring, release
-          automation, and accessibility. The site runs on Astro and Cloudflare Workers.
+          <span data-edit-key="now.engineering.body">{getSiteCopy(Astro.locals,'now.engineering.body')}</span>
         </p>
         <a href="/projects" class="inline-flex text-sm font-medium text-emerald-700 dark:text-emerald-400 underline underline-offset-4 hover:text-emerald-800 dark:hover:text-emerald-300">
-          Explore the projects &rarr;
+          <span data-edit-key="now.engineering.link">{getSiteCopy(Astro.locals,'now.engineering.link')}</span> &rarr;
         </a>
       </section>
 
       <section class="space-y-3">
-        <h2 class="text-base font-semibold text-neutral-900 dark:text-neutral-100">Learning &amp; practice</h2>
+        <h2 class="text-base font-semibold text-neutral-900 dark:text-neutral-100" data-edit-key="now.learning.title">{getSiteCopy(Astro.locals,"now.learning.title")}</h2>
         <p>
-          Exploring Linux, containers, CI/CD, and observability alongside AI studies.
-          I share notes and technical lessons as I build.
+          <span data-edit-key="now.learning.body">{getSiteCopy(Astro.locals,'now.learning.body')}</span>
         </p>
         <a href="/blog" class="inline-flex text-sm font-medium text-emerald-700 dark:text-emerald-400 underline underline-offset-4 hover:text-emerald-800 dark:hover:text-emerald-300">
-          Read the writing &rarr;
+          <span data-edit-key="now.learning.link">{getSiteCopy(Astro.locals,'now.learning.link')}</span> &rarr;
         </a>
       </section>
 
       <section class="space-y-3">
-        <h2 class="text-base font-semibold text-neutral-900 dark:text-neutral-100">Location</h2>
-        <p>Based in Tashkent, Uzbekistan.</p>
+        <h2 class="text-base font-semibold text-neutral-900 dark:text-neutral-100" data-edit-key="now.location.title">{getSiteCopy(Astro.locals,"now.location.title")}</h2>
+        <p data-edit-key="now.location.body">{getSiteCopy(Astro.locals,'now.location.body')}</p>
       </section>
     </div>
   </div>
