@@ -39,7 +39,8 @@ async function auditHeaders() {
     const cspPass = Boolean(scriptSrcNoUnsafe && fontSrcNoData);
 
     const nosniff = headers.get('x-content-type-options') === 'nosniff';
-    const robots = (headers.get('x-robots-tag') || '').includes('noindex');
+    const robotsHeader = headers.get('x-robots-tag') || '';
+    const robots = !robotsHeader.toLowerCase().includes('noindex');
     const xfo = headers.get('x-frame-options');
     const xfoPass = xfo === 'DENY' || xfo === 'SAMEORIGIN';
 
@@ -62,7 +63,7 @@ async function auditHeaders() {
     });
 
     results.push({
-      check: 'Production X-Robots-Tag: noindex (SITE_INDEXING=off safety)',
+      check: 'Production pages are indexable (no X-Robots-Tag noindex)',
       status: robots ? 'PASS' : 'FAIL',
       detail: headers.get('x-robots-tag') || 'Missing',
     });
@@ -89,7 +90,7 @@ async function auditPublicEndpoints() {
     { path: '/projects', expectedStatus: 200 },
     { path: '/uses', expectedStatus: 200 },
     { path: '/now', expectedStatus: 200 },
-    { path: '/robots.txt', expectedStatus: 200, validate: (txt) => txt.includes('Disallow: /') },
+    { path: '/robots.txt', expectedStatus: 200, validate: (txt) => txt.includes('Allow: /') && txt.includes('Sitemap: https://sodops.uz/sitemap.xml') },
     { path: '/api/health', expectedStatus: 200, validateJson: (j) => j.ok === true },
     { path: '/api/search.json', expectedStatus: 200, validateJson: (j) => Array.isArray(j) },
     { path: '/non-existent-page-404', expectedStatus: 404 },
@@ -123,6 +124,16 @@ async function auditPublicEndpoints() {
         detail: err.message,
       });
     }
+  }
+
+  // Indexable production sitemap is discoverable and well-formed.
+  try {
+    const res = await fetch(`${PROD_URL}/sitemap.xml`);
+    const xml = await res.text();
+    const valid = res.status === 200 && xml.includes('<urlset') && xml.includes(`${PROD_URL}/`);
+    results.push({ check: 'Public Sitemap: /sitemap.xml', status: valid ? 'PASS' : 'FAIL', detail: `HTTP ${res.status}` });
+  } catch (err) {
+    results.push({ check: 'Public Sitemap: /sitemap.xml', status: 'FAIL', detail: err.message });
   }
 
   // XML validation for feed.xml

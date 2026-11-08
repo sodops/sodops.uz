@@ -35,7 +35,7 @@
   "vars": {
     "SITE_URL": "https://sodops.uz",
     "CF_ACCESS_TEAM_DOMAIN": "sodops.cloudflareaccess.com",
-    "SITE_INDEXING": "off",
+    "SITE_INDEXING": "on",
   },
 
   // Isolated per-PR Worker Previews. No production D1, KV, R2, cron,
