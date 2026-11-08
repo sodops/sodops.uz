@@ -18,8 +18,10 @@
     var toggle = document.getElementById('theme-toggle');
     if (!toggle || toggle.dataset.bound) return;
     toggle.dataset.bound = 'true';
+    toggle.setAttribute('aria-pressed', String(document.documentElement.classList.contains('dark')));
     toggle.addEventListener('click', function () {
       var isDark = document.documentElement.classList.toggle('dark');
+      toggle.setAttribute('aria-pressed', String(isDark));
       try {
         localStorage.setItem('theme', isDark ? 'dark' : 'light');
       } catch (e) {}
@@ -174,6 +176,8 @@
   function init() {
     applyTheme();
     setupThemeToggle();
+    var themeToggle = document.getElementById('theme-toggle');
+    if (themeToggle) themeToggle.setAttribute('aria-pressed', String(document.documentElement.classList.contains('dark')));
     setupEmail();
     setupBlogInteractions();
     setupReadingProgressAndToc();
