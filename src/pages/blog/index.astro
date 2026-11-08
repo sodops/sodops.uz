@@ -80,8 +80,8 @@ function formatDate(date: Date): string {
 ---
 
 <BaseLayout
-  title={selectedTag ? `${strings.blog.title} (#${selectedTag})` : strings.blog.title}
-  description={strings.blog.description}
+  title={selectedTag ? `${getSiteCopy(Astro.locals,'blog.title')} (#${selectedTag})` : getSiteCopy(Astro.locals,'blog.title')}
+  description={getSiteCopy(Astro.locals,'blog.description')}
 >
   <div class="space-y-8">
     <!-- Page Header -->
