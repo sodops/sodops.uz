@@ -1,5 +1,6 @@
 ---
 import { strings } from '../lib/strings';
+import { getSiteCopy } from '../lib/site-content';
 
 const currentYear = new Date().getFullYear();
 ---
@@ -13,7 +14,7 @@ const currentYear = new Date().getFullYear();
     <div class="flex items-center gap-3">
       <span>{strings.site.author} &copy; {currentYear}</span>
       <span aria-hidden="true">&middot;</span>
-      <span>{strings.footer.license}</span>
+      <span data-edit-key="footer.license">{getSiteCopy(Astro.locals,'footer.license')}</span>
     </div>
 
     <div class="flex items-center gap-4">
