@@ -187,6 +187,31 @@ jobs:
             exit 1
           fi
 
+      - name: Deploy stable preview.sodops.uz
+        if: github.event.pull_request.number == 21
+        id: stable-preview
+        uses: cloudflare/wrangler-action@953926a2e2182532811c01a25e53647d93bf07c0 # v4
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          wranglerVersion: '4.136.3'
+          command: deploy --config dist/server/wrangler.stable-preview.json
+
+      - name: Check stable preview custom domain
+        if: github.event.pull_request.number == 21
+        run: |
+          set -euo pipefail
+          HOST="https://preview.sodops.uz"
+          for path in / /blog /projects /uses /now; do
+            curl -fsSL --retry 4 --retry-delay 4 --retry-all-errors "$HOST$path" -o /dev/null
+          done
+          headers="$(curl -fsSI "$HOST/")"
+          printf '%s\n' "$headers" | tr -d '\r' | grep -qi '^x-robots-tag:.*noindex'
+          status="$(curl -s -o /dev/null -w '%{http_code}' "$HOST/admin")"
+          [ "$status" = "401" ] || [ "$status" = "403" ] || [ "$status" = "302" ]
+          echo "### Stable preview domain" >> "$GITHUB_STEP_SUMMARY"
+          echo "[Open preview.sodops.uz](https://preview.sodops.uz)" >> "$GITHUB_STEP_SUMMARY"
+
       - name: Publish review URL
         env:
           PREVIEW_URL: ${{ steps.preview.outputs.preview-url }}
