@@ -1,0 +1,50 @@
+name: Diagnose isolated CMS preview authentication
+on:
+  push:
+    branches: [ops/inspect-cms-preview-access]
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - name: Check Cloudflare scope and preview guard safely
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          node --input-type=module <<'JS'
+          const token = process.env.CLOUDFLARE_API_TOKEN, id = process.env.CLOUDFLARE_ACCOUNT_ID;
+          if (!token || !id) throw new Error('Cloudflare deployment credentials unavailable');
+          const base = 'https://api.cloudflare.com/client/v4';
+          async function inspect(name, path) {
+            try {
+              const r = await fetch(base+path,{headers:{Authorization:'Bearer '+token}});
+              const body = await r.json();
+              console.log(name, 'HTTP',r.status,'authorized:',Boolean(body.success),'error codes:',(body.errors||[]).map(x=>x.code));
+              return body.success ? body.result : null;
+            }catch(e){console.log(name,'Request failed:',String(e.message).slice(0,120));return null;}
+          }
+          const apps = await inspect('Zero Trust Access app read','/accounts/'+id+'/access/apps?per_page=100');
+          if (Array.isArray(apps)) {
+            console.log('Access app total:',apps.length);
+            console.log('Preview Access application found:',apps.some(x=>JSON.stringify(x.domains||x.destinations||[]).includes('preview.sodops.uz')));
+            console.log('Production Access application found:',apps.some(x=>JSON.stringify(x.domains||x.destinations||[]).includes('sodops.uz')));
+          }
+          const dbs = await inspect('D1 listing','/accounts/'+id+'/d1/database?per_page=100');
+          if (Array.isArray(dbs)) console.log('D1 total:',dbs.length,'isolated preview database exists:',dbs.some(x=>/preview|staging|cms/i.test(x.name)));
+          const domains = await inspect('Worker domains','/accounts/'+id+'/workers/domains');
+          if (Array.isArray(domains)) {
+            for(const host of ['preview.sodops.uz','sodops.uz']) {
+              const found=domains.find(x=>x.hostname===host);
+              console.log(host,'Worker domain exists:',Boolean(found),'service:',found?.service??'(none)');
+            }
+          }
+          for(const url of ['https://preview.sodops.uz/admin','https://pr-25-sodops-uz.skarimjonoff.workers.dev/admin','https://pr-25-sodops-uz.skarimjonoff.workers.dev/api/admin/content']){
+            try {
+              const response=await fetch(url,{redirect:'manual',signal:AbortSignal.timeout(12000)});
+              console.log(url.replace(/https:\/\//,''), 'HTTP',response.status,'redirectToAccessLogin:',Boolean((response.headers.get('location')||'').includes('/cdn-cgi/access/login')));
+            }catch(e){console.log(url.replace(/https:\/\//,''),'request failed:',String(e.message).slice(0,90));}
+          }
+          JS
