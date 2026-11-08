@@ -22,7 +22,7 @@
     setTimeout(function () { note.remove(); }, 4500);
   }
 
-  function showEditor(target, key, config) {
+  function showEditor(target, key, config, project) {
     var initial = target.textContent || '';
     var dialog = element('dialog', 'visual-editor-dialog');
     dialog.setAttribute('aria-label', 'Edit ' + key);
@@ -39,6 +39,7 @@
     var actions = element('div', 'visual-editor-actions');
     var cancel = element('button', '', 'Cancel');
     var reset = element('button', '', 'Restore default');
+    if (project) reset.hidden = true;
     var save = element('button', 'visual-editor-primary', 'Save changes');
     for (var btn of [cancel, reset, save]) btn.type = 'button';
     actions.append(cancel, reset, save);
@@ -65,18 +66,21 @@
       reset.disabled = true;
       cancel.disabled = true;
       try {
-        var response = await fetch(API, {
+        var endpoint = project ? '/api/admin/projects/' + encodeURIComponent(project.id) : API;
+        var payload = project ? { field: project.field, value: value }
+          : method === 'DELETE' ? { key: key } : { key: key, value: value };
+        var response = await fetch(endpoint, {
           method: method,
           credentials: 'same-origin',
           headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
-          body: JSON.stringify(method === 'DELETE' ? { key: key } : { key: key, value: value }),
+          body: JSON.stringify(payload),
         });
         if (!response.ok) {
           var error = await response.json().catch(function () { return {}; });
           throw new Error(error.error || 'Save failed (' + response.status + ')');
         }
         var data = await response.json();
-        config.overrides[key] = method === 'DELETE' ? undefined : data.value;
+        if (!project) config.overrides[key] = method === 'DELETE' ? undefined : data.value;
         target.textContent = data.value;
         dialog.close();
         dialog.remove();
@@ -129,6 +133,9 @@
       a.href = pair[1] + '?edit=1';
       bar.appendChild(a);
     });
+    var posts = element('a', '', 'Manage posts');
+    posts.href = '/admin';
+    bar.appendChild(posts);
     var exit = element('a', 'visual-editor-exit', 'Exit editing');
     exit.href = window.location.pathname;
     bar.appendChild(exit);
@@ -146,11 +153,28 @@
       button.addEventListener('click', function (event) {
         event.preventDefault();
         event.stopPropagation();
-        showEditor(target, key, config);
+        showEditor(target, key, config, null);
       });
       // Never nest an interactive pencil button inside an anchor.
       var link = target.closest('a');
       (link || target).after(button);
+    });
+
+    // D1 project cards use a separately guarded, field-allowlisted API.
+    document.querySelectorAll('[data-project-id][data-project-field]').forEach(function (target) {
+      var id = target.getAttribute('data-project-id');
+      var field = target.getAttribute('data-project-field');
+      if (!id || !/^[a-zA-Z0-9_-]{1,128}$/.test(id) || !['name','description'].includes(field)) return;
+      var button = element('button', 'visual-editor-pencil', '✎');
+      button.type = 'button';
+      button.setAttribute('aria-label', 'Edit project ' + field);
+      button.title = 'Edit project ' + field;
+      button.addEventListener('click', function (event) {
+        event.preventDefault();
+        event.stopPropagation();
+        showEditor(target, 'project / ' + id + ' / ' + field, config, {id: id, field: field});
+      });
+      (target.closest('a') || target).after(button);
     });
   }
 
