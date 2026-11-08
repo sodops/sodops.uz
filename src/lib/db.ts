@@ -37,7 +37,7 @@ export async function getPublishedPosts(db?: D1Database): Promise<PostWithTags[]
 
   const query = `
     SELECT 
-      p.id, p.slug, p.title, p.content, p.content_html, p.excerpt, 
+      p.id, p.slug, p.title, p.excerpt, 
       p.cover_image, p.published, p.published_at, p.created_at, p.updated_at, 
       p.reading_time_minutes,
       GROUP_CONCAT(t.name) as tags_str
