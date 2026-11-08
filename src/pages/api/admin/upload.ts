@@ -24,6 +24,12 @@ export const POST: APIRoute = async ({ request, locals }) => {
     });
   }
 
+  const declaredSize = Number(request.headers.get('content-length'));
+  // Multipart boundaries add small overhead to the 5MB image limit.
+  if (Number.isFinite(declaredSize) && declaredSize > MAX_UPLOAD_SIZE + 64 * 1024) {
+    return Response.json({ error: 'Upload request is too large' }, { status: 413 });
+  }
+
   try {
     const formData = await request.formData();
     const file = formData.get('file') as File;
@@ -51,8 +57,9 @@ export const POST: APIRoute = async ({ request, locals }) => {
     const sanitizedBase = file.name
       .replace(/\.[^/.]+$/, '')
       .replace(/[^a-zA-Z0-9-_]/g, '-')
-      .toLowerCase();
-    const key = `posts/${Date.now()}-${sanitizedBase}.${validation.extension}`;
+      .toLowerCase()
+      .slice(0, 80) || 'image';
+    const key = `posts/${crypto.randomUUID()}-${sanitizedBase}.${validation.extension}`;
 
     await env.UPLOADS_BUCKET.put(key, buffer, {
       httpMetadata: { contentType: validation.mimeType },
