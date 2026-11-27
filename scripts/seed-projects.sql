@@ -29,7 +29,7 @@ INSERT INTO projects (
   'sodops.uz',
   'TODO(sodiq)',
   'https://sodops.uz',
-  'https://github.com/skarimjonoff/sodops.uz',
+  'https://github.com/sodops/sodops.uz',
   'https://sodops.uz/api/health',
   '["Astro", "Cloudflare D1", "Tailwind CSS", "TypeScript"]',
   1,

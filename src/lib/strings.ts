@@ -62,6 +62,9 @@ export const strings = {
     statusDown: 'Outage',
     viewSite: 'Visit site',
     viewSource: 'Source code',
+    openSourceTitle: 'Open source',
+    openSourceDescription: 'Other things I have built, from tools for my own Linux desktop to full web apps. Code is public on GitHub.',
+    allRepos: 'All repositories on GitHub',
   },
   uses: {
     title: 'Uses',

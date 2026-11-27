@@ -6,6 +6,7 @@ import { getSiteCopy } from '../lib/site-content';
 import { aggregateMonitoringStatus } from '../lib/monitoring-state';
 import { formatLastChecked } from '../lib/date-format';
 import { env } from 'cloudflare:workers';
+import { OPEN_SOURCE_PROJECTS, GITHUB_USER, repoUrl } from '../lib/open-source-projects';
 
 export const prerender = false;
 
@@ -348,6 +349,51 @@ const avgUptime =
           ))
         )
       }
+    </section>
+
+    <!-- Open source repositories (static list, not monitored) -->
+    <section aria-labelledby="open-source-heading" class="space-y-4 pt-6 border-t border-neutral-200/60 dark:border-neutral-800/60">
+      <div class="space-y-1">
+        <h2 id="open-source-heading" class="text-lg font-semibold tracking-tight text-neutral-900 dark:text-neutral-100 font-sans">
+          {strings.projects.openSourceTitle}
+        </h2>
+        <p class="text-sm text-neutral-600 dark:text-neutral-400 max-w-xl">
+          {strings.projects.openSourceDescription}
+        </p>
+      </div>
+      <ul class="divide-y divide-neutral-200/60 dark:divide-neutral-800/60">
+        {OPEN_SOURCE_PROJECTS.map((project) => (
+          <li class="py-4 space-y-2">
+            <h3 class="text-sm font-semibold text-neutral-900 dark:text-neutral-100 font-sans">
+              <a
+                href={repoUrl(project)}
+                target="_blank"
+                rel="noopener noreferrer"
+                class="hover:text-emerald-700 dark:hover:text-emerald-400 transition-colors"
+              >
+                {project.name}
+                <span class="ml-1.5 text-xs font-mono font-normal text-neutral-500 dark:text-neutral-400">{GITHUB_USER}/{project.repo}</span>
+              </a>
+            </h3>
+            <p class="text-xs sm:text-sm text-neutral-600 dark:text-neutral-400 leading-relaxed">{project.description}</p>
+            <div class="flex flex-wrap gap-1.5">
+              {project.tags.map((tag) => (
+                <span class="text-[11px] font-mono px-2 py-0.5 rounded bg-neutral-100 dark:bg-neutral-800/80 text-neutral-700 dark:text-neutral-300 border border-neutral-200/60 dark:border-neutral-700/60">
+                  {tag}
+                </span>
+              ))}
+            </div>
+          </li>
+        ))}
+      </ul>
+      <a
+        href={`https://github.com/${GITHUB_USER}?tab=repositories`}
+        target="_blank"
+        rel="noopener noreferrer"
+        class="inline-block text-xs font-mono text-emerald-700 dark:text-emerald-400 hover:underline"
+      >
+        {strings.projects.allRepos} &rarr;
+      </a>
     </section>
 
     <!-- Architecture Explanation Callout -->
