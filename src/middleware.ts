@@ -16,7 +16,7 @@ export const onRequest = defineMiddleware(async (context, next) => {
   // Any admin request without a valid Access JWT returns 401/403, never 404,
   // across all HTTP methods (GET, POST, PUT, DELETE, HEAD, OPTIONS).
   if (isAdmin) {
-    const workerEnv = (env || {}) as any;
+    const workerEnv: Partial<Cloudflare.Env> = env ?? {};
     const adminEmails =
       workerEnv.ADMIN_EMAILS ||
       workerEnv.ADMIN_EMAIL ||
@@ -107,14 +107,14 @@ export const onRequest = defineMiddleware(async (context, next) => {
     }
 
     // Pass authenticated context to route locals
-    (context.locals as any).auth = auth;
+    context.locals.auth = auth;
   }
 
   // Load text overrides once for each server-rendered public page.
   // Readers see the same content as search engines (not client-side-only copy).
   const publicPage = /^(?:\/$|\/blog(?:\/.*)?$|\/projects\/?$|\/uses\/?$|\/now\/?)$/.test(normalizedPath);
   if (!isAdmin && context.request.method === 'GET' && publicPage) {
-    (context.locals as any).siteCopy = await loadSiteCopy((env as any)?.DB);
+    context.locals.siteCopy = await loadSiteCopy(env?.DB);
   }
 
   const response = await next();
@@ -129,7 +129,7 @@ export const onRequest = defineMiddleware(async (context, next) => {
   // 3. Strict X-Robots-Tag: noindex on ALL hosts while SITE_INDEXING is off (default).
   // When SITE_INDEXING is on, only non-sodops.uz hosts receive noindex.
   const siteIndexing = (
-    (env as any)?.SITE_INDEXING ||
+    env?.SITE_INDEXING ||
     import.meta.env.SITE_INDEXING ||
     'off'
   ).toLowerCase();

@@ -29,8 +29,7 @@ const siteBase = (import.meta.env.SITE_URL || Astro.site?.toString() || 'https:/
 const canonicalURL = new URL(Astro.url.pathname, siteBase);
 
 const siteIndexing = (
-  (env as any)?.SITE_INDEXING ||
-  (Astro.locals as any)?.runtime?.env?.SITE_INDEXING ||
+  env?.SITE_INDEXING ||
   import.meta.env.SITE_INDEXING ||
   'off'
 ).toLowerCase();
@@ -105,6 +104,5 @@ const siteIndexing = (
     <Footer />
     <CommandPalette client:idle />
     <script is:inline src="/app.js" defer></script>
-    <script is:inline src="/content-editor.js" defer></script>
   </body>
 </html>

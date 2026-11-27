@@ -75,11 +75,12 @@ pnpm todos           # List all TODO(sodiq) placeholders across the codebase
    - Paused projects (`status: 'paused'`) are strictly skipped by the cron, show "coming soon" in UI, and are excluded from overall banner and uptime math.
    - Status checks for `sodops.uz` probe `/api/health` (no-store, lightweight D1 SELECT 1) to prevent self-inflicted cache misses.
 4. **Public Content Safety & Indexing**:
-   - Controlled by `SITE_INDEXING` environment variable (default: `"off"`).
+   - Controlled by `SITE_INDEXING` environment variable (code default: `"off"`). **Production currently sets `"on"` in `wrangler.jsonc` `vars`**; Worker previews force `"off"`.
    - While `SITE_INDEXING` is `"off"`: `X-Robots-Tag: noindex, nofollow` is sent on all hosts, `robots.txt` serves `Disallow: /`, `<meta name="robots" content="noindex, nofollow">` is rendered, and `sitemap.xml` returns 404 + noindex.
    - Never write invented facts about Sodiq. Any unstated facts must use `TODO(sodiq)` placeholders, listed via `pnpm todos`.
 5. **Admin Security & Authentication**:
    - `/admin/*` and `/api/admin/*` are protected by Cloudflare Access under team domain `sodops.cloudflareaccess.com` (team name `sodops`).
+   - The Access application destination path is `admin*`, which does **not** cover `/api/admin/*`. That is why the admin dashboard (`public/admin.js`) calls the `/admin/api/*` aliases in `src/pages/admin/api/` (re-exports of `src/pages/api/admin/*`), so Access injects `Cf-Access-Jwt-Assertion`. Do not delete these aliases. `/api/admin/*` still works through the `CF_Authorization` cookie fallback in `extractAccessJwt`.
    - Must be accessed via custom domain (`preview.sodops.uz`, later adding apex `sodops.uz`); does not work on ephemeral `*.workers.dev`.
    - API endpoints verify `Cf-Access-Jwt-Assertion` cryptographic RS256 signature against Access JWKS certs, `aud` claim, `iss` claim (`https://sodops.cloudflareaccess.com`), future `exp`, and email matching.
    - Allowed emails are loaded from `ADMIN_EMAILS` (comma-separated, allowing primary email + GitHub OAuth).

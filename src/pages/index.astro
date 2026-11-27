@@ -14,11 +14,6 @@ export const prerender = false;
 // defaults; this call adds the home-specific tag and can override maxAge per request.
 Astro.cache.set({ maxAge: 60, swr: 300, tags: ['home', 'blog'] });
 
-// Temporary: X-Rendered-At header proves CDN cache hits.
-// Two requests within 60s should return the same timestamp value.
-// Remove this header once caching is confirmed working.
-Astro.response.headers.set('X-Rendered-At', new Date().toISOString());
-
 import { getPublishedPosts, getFeaturedProjects } from '../lib/db';
 
 import { env } from 'cloudflare:workers';

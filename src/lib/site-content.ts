@@ -14,7 +14,7 @@ export const SITE_COPY = {
   "blog.title": "Writing",
   "blog.description": "Notes on DevOps, infrastructure, edge architecture, and AI.",
   "projects.title": "Projects",
-  "projects.description": "Websites, infrastructure services, and tools I maintain. Infrastructure services, tools, and live availability monitors.",
+  "projects.description": "Websites, infrastructure services, and tools I maintain, with live availability monitoring.",
   "uses.title": "Uses",
   "uses.description": "The tools and infrastructure behind my projects and experiments.",
   "now.title": "Now",
@@ -70,7 +70,7 @@ export function validateSiteCopyInput(key: unknown, value: unknown): string | nu
 }
 
 export function getSiteCopy(locals: App.Locals, key: SiteCopyKey): string {
-  const overrides = (locals as App.Locals & { siteCopy?: Record<string,string> }).siteCopy;
+  const overrides = locals.siteCopy;
   return overrides?.[key] ?? SITE_COPY[key];
 }
 

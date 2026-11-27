@@ -18,6 +18,15 @@ declare namespace Cloudflare {
 
 interface Env extends Cloudflare.Env {}
 
+declare namespace App {
+  interface Locals {
+    /** Set by middleware after a successful Cloudflare Access check on admin paths. */
+    auth?: import('./lib/auth').AuthResult;
+    /** Editable site copy overrides loaded from D1 for public pages. */
+    siteCopy?: Record<string, string>;
+  }
+}
+
 type CloudflareEnv = Env;
 
 declare namespace App {

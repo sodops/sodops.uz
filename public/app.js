@@ -173,6 +173,17 @@
     });
   }
 
+  // 6. Visual content editor: only fetched when ?edit=1 is present, so regular
+  // visitors never download it. Once loaded it handles later navigations itself.
+  function loadContentEditorIfRequested() {
+    if (window.__sodopsEditorLoaded) return;
+    if (new URL(window.location.href).searchParams.get('edit') !== '1') return;
+    window.__sodopsEditorLoaded = true;
+    var script = document.createElement('script');
+    script.src = '/content-editor.js';
+    document.body.appendChild(script);
+  }
+
   function init() {
     applyTheme();
     setupThemeToggle();
@@ -182,6 +193,7 @@
     setupBlogInteractions();
     setupReadingProgressAndToc();
     setupCommandPaletteTrigger();
+    loadContentEditorIfRequested();
   }
 
   if (document.readyState === 'loading') {

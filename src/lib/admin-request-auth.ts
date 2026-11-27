@@ -14,7 +14,7 @@ export async function resolveAdminAuth(
   request: Request,
   locals: App.Locals
 ): Promise<AuthResult> {
-  const cached = (locals as App.Locals & { auth?: AuthResult }).auth;
+  const cached = locals.auth;
   if (cached) return cached;
 
   return authenticateAdminRequest({

@@ -17,27 +17,27 @@
 
 | # | Check Target | Target | Tool / Framework | Verdict | Evidence / Log Path |
 | :-: | :--- | :---: | :--- | :---: | :--- |
-| **1** | TypeScript & Astro Typecheck | Local | `@astrojs/check` / `tsc` | **PASS** | [`qa-report/logs/typecheck.log`](file:///home/sodiq/Projects/sodops.uz/qa-report/logs/typecheck.log) (0 errors, 0 warnings across 69 files) |
-| **2** | ESLint Code Quality | Local | `eslint` | **PASS** | [`qa-report/logs/lint.log`](file:///home/sodiq/Projects/sodops.uz/qa-report/logs/lint.log) (0 warnings, 0 errors) |
-| **3** | Core Unit Test Suite (205 tests) | Local | `tsx --test` (Node test runner) | **PASS** | [`qa-report/logs/unit-tests.log`](file:///home/sodiq/Projects/sodops.uz/qa-report/logs/unit-tests.log) (205 tests passed, 29 suites) |
-| **4** | Supply Chain Dependency Audit | Local | `pnpm audit --prod` | **PASS** | [`qa-report/logs/audit.log`](file:///home/sodiq/Projects/sodops.uz/qa-report/logs/audit.log) (0 vulnerabilities) |
-| **5** | Production Build & CSP Script Hash Verification | Local | `astro build` + SHA-256 verifier | **PASS** | [`qa-report/logs/build.log`](file:///home/sodiq/Projects/sodops.uz/qa-report/logs/build.log) (7 inline hydrators verified) |
-| **A5** | Admin Local QA & Post Lifecycle (Draft, Publish, Edit, Delete, Uzbek/Cyrillic Slugs, 10k Word Benchmark) | Local Preview / D1 Mock | `admin-qa.test.ts` & `admin-lifecycle.test.ts` | **PASS** | [`qa-report/logs/admin-qa.log`](file:///home/sodiq/Projects/sodops.uz/qa-report/logs/admin-qa.log) (Full post CRUD, Uzbek o‘/g‘ transliteration, 10k word bench) |
-| **A6** | Security Fuzz: JWT Edge Cases, Throttled JWKS Refetch, SSRF Allowlist Matrix | Local & Web Crypto | `security-fuzz.test.ts` | **PASS** | [`qa-report/logs/security-fuzz.log`](file:///home/sodiq/Projects/sodops.uz/qa-report/logs/security-fuzz.log) (Unknown kid throttling, alg:none rejection, SSRF block) |
-| **A7** | Content & SEO Hierarchy Audit (Sitemap XML, Robots.txt, Single H1, OG/Twitter Metadata, Safety Guard) | Local & XML validator | `content-seo.test.ts` & `safety.test.ts` | **PASS** | [`qa-report/logs/content-seo.log`](file:///home/sodiq/Projects/sodops.uz/qa-report/logs/content-seo.log) (Sitemap XML schema, single H1 on 7 routes, RFC 9116 guard) |
-| **Cache** | Edge Cache Invalidation Semantics & Purge Lifecycle (blog, home, post:slug tags) | Local Mock | `admin-lifecycle.test.ts` | **PASS** | [`qa-report/logs/cache-semantics.log`](file:///home/sodiq/Projects/sodops.uz/qa-report/logs/cache-semantics.log) (Exact tags invalidated on publish/edit/unpublish/delete) |
-| **6** | Cloudflare Worker Bundle Size (< 1 MB limit) | Local | `stat` / entrypoint analyzer | **PASS** | [`qa-report/logs/bundle-size.log`](file:///home/sodiq/Projects/sodops.uz/qa-report/logs/bundle-size.log) (Entrypoint: **352 KB**, DB chunk: **15 KB**) |
-| **7** | Real Browser E2E & CSP Violations | Local Preview | Playwright Headless Chromium & Firefox | **PASS** | [`qa-report/logs/e2e.log`](file:///home/sodiq/Projects/sodops.uz/qa-report/logs/e2e.log) (14 tests passed, 0 console errors, 0 CSP violations) |
-| **8** | User Flows & View Transitions | Local Preview | Playwright Headless Chromium & Firefox | **PASS** | [`qa-report/logs/flows.log`](file:///home/sodiq/Projects/sodops.uz/qa-report/logs/flows.log) (TOC jump, Code copy, Theme persistence, Prev/Next) |
-| **9** | Status States & Minecraft Telemetry UI | Local Preview | Playwright Headless Chromium & Firefox | **PASS** | [`qa-report/logs/status-states.log`](file:///home/sodiq/Projects/sodops.uz/qa-report/logs/status-states.log) (Operational, Degraded, Paused states verified) |
-| **10** | Responsive Viewports & Layout Matrix | Local Preview | Playwright (Chromium & Firefox) | **PASS** | [`qa-report/logs/matrix.log`](file:///home/sodiq/Projects/sodops.uz/qa-report/logs/matrix.log) (82 test runs: 360, 390, 768, 1280, 1920 across themes & SSR) |
-| **11** | Axe-core WCAG AA Accessibility Suite | Local Preview | `@axe-core/playwright` | **PASS** | [`qa-report/logs/axe.log`](file:///home/sodiq/Projects/sodops.uz/qa-report/logs/axe.log) (14 tests passed, Desktop + Dark Mobile 360px, 0 violations) |
-| **12** | Playwright WebKit Browser Engine | Local Preview | WebKit (Safari engine) | **BLOCKED** | [`qa-report/logs/webkit-blocked.log`](file:///home/sodiq/Projects/sodops.uz/qa-report/logs/webkit-blocked.log) (Missing host OS `libevent-2.1-7t64` / `libmanette-0.2-0`) |
-| **13** | RSS Feed XML Schema Validity | Local Preview | `xmllint --noout` | **PASS** | [`qa-report/logs/feed-xml.log`](file:///home/sodiq/Projects/sodops.uz/qa-report/logs/feed-xml.log) (Well-formed XML) |
-| **14** | Defense-in-Depth Security Headers | Local Preview | `curl` HTTP Header Assertion | **PASS** | [`qa-report/logs/headers.log`](file:///home/sodiq/Projects/sodops.uz/qa-report/logs/headers.log) (HSTS, CSP, X-Frame-Options: DENY, nosniff) |
-| **15** | Internal Link Integrity | Local Preview | HTTP Status Crawler | **PASS** | [`qa-report/logs/link-check.log`](file:///home/sodiq/Projects/sodops.uz/qa-report/logs/link-check.log) (0 broken links across all routes) |
-| **16** | Lighthouse CI Mobile Audit (3 runs median) | Local Preview | `@lhci/cli` | **PASS** | [`qa-report/logs/lighthouse-medians.log`](file:///home/sodiq/Projects/sodops.uz/qa-report/logs/lighthouse-medians.log) (Perf: 98-99, A11y: 100, BP: 100, SEO: 66) |
-| **17** | Production Non-Destructive Public Audit | Production (`https://sodops.uz`) | `scripts/qa/run-prod.mjs` | **PASS** | [`qa-report/prod-summary.json`](file:///home/sodiq/Projects/sodops.uz/qa-report/prod-summary.json) (20/20 checks passed) |
+| **1** | TypeScript & Astro Typecheck | Local | `@astrojs/check` / `tsc` | **PASS** | [`qa-report/logs/typecheck.log`](qa-report/logs/typecheck.log) (0 errors, 0 warnings across 69 files) |
+| **2** | ESLint Code Quality | Local | `eslint` | **PASS** | [`qa-report/logs/lint.log`](qa-report/logs/lint.log) (0 warnings, 0 errors) |
+| **3** | Core Unit Test Suite (205 tests) | Local | `tsx --test` (Node test runner) | **PASS** | [`qa-report/logs/unit-tests.log`](qa-report/logs/unit-tests.log) (205 tests passed, 29 suites) |
+| **4** | Supply Chain Dependency Audit | Local | `pnpm audit --prod` | **PASS** | [`qa-report/logs/audit.log`](qa-report/logs/audit.log) (0 vulnerabilities) |
+| **5** | Production Build & CSP Script Hash Verification | Local | `astro build` + SHA-256 verifier | **PASS** | [`qa-report/logs/build.log`](qa-report/logs/build.log) (7 inline hydrators verified) |
+| **A5** | Admin Local QA & Post Lifecycle (Draft, Publish, Edit, Delete, Uzbek/Cyrillic Slugs, 10k Word Benchmark) | Local Preview / D1 Mock | `admin-qa.test.ts` & `admin-lifecycle.test.ts` | **PASS** | [`qa-report/logs/admin-qa.log`](qa-report/logs/admin-qa.log) (Full post CRUD, Uzbek o‘/g‘ transliteration, 10k word bench) |
+| **A6** | Security Fuzz: JWT Edge Cases, Throttled JWKS Refetch, SSRF Allowlist Matrix | Local & Web Crypto | `security-fuzz.test.ts` | **PASS** | [`qa-report/logs/security-fuzz.log`](qa-report/logs/security-fuzz.log) (Unknown kid throttling, alg:none rejection, SSRF block) |
+| **A7** | Content & SEO Hierarchy Audit (Sitemap XML, Robots.txt, Single H1, OG/Twitter Metadata, Safety Guard) | Local & XML validator | `content-seo.test.ts` & `safety.test.ts` | **PASS** | [`qa-report/logs/content-seo.log`](qa-report/logs/content-seo.log) (Sitemap XML schema, single H1 on 7 routes, RFC 9116 guard) |
+| **Cache** | Edge Cache Invalidation Semantics & Purge Lifecycle (blog, home, post:slug tags) | Local Mock | `admin-lifecycle.test.ts` | **PASS** | [`qa-report/logs/cache-semantics.log`](qa-report/logs/cache-semantics.log) (Exact tags invalidated on publish/edit/unpublish/delete) |
+| **6** | Cloudflare Worker Bundle Size (< 1 MB limit) | Local | `stat` / entrypoint analyzer | **PASS** | [`qa-report/logs/bundle-size.log`](qa-report/logs/bundle-size.log) (Entrypoint: **352 KB**, DB chunk: **15 KB**) |
+| **7** | Real Browser E2E & CSP Violations | Local Preview | Playwright Headless Chromium & Firefox | **PASS** | [`qa-report/logs/e2e.log`](qa-report/logs/e2e.log) (14 tests passed, 0 console errors, 0 CSP violations) |
+| **8** | User Flows & View Transitions | Local Preview | Playwright Headless Chromium & Firefox | **PASS** | [`qa-report/logs/flows.log`](qa-report/logs/flows.log) (TOC jump, Code copy, Theme persistence, Prev/Next) |
+| **9** | Status States & Minecraft Telemetry UI | Local Preview | Playwright Headless Chromium & Firefox | **PASS** | [`qa-report/logs/status-states.log`](qa-report/logs/status-states.log) (Operational, Degraded, Paused states verified) |
+| **10** | Responsive Viewports & Layout Matrix | Local Preview | Playwright (Chromium & Firefox) | **PASS** | [`qa-report/logs/matrix.log`](qa-report/logs/matrix.log) (82 test runs: 360, 390, 768, 1280, 1920 across themes & SSR) |
+| **11** | Axe-core WCAG AA Accessibility Suite | Local Preview | `@axe-core/playwright` | **PASS** | [`qa-report/logs/axe.log`](qa-report/logs/axe.log) (14 tests passed, Desktop + Dark Mobile 360px, 0 violations) |
+| **12** | Playwright WebKit Browser Engine | Local Preview | WebKit (Safari engine) | **BLOCKED** | [`qa-report/logs/webkit-blocked.log`](qa-report/logs/webkit-blocked.log) (Missing host OS `libevent-2.1-7t64` / `libmanette-0.2-0`) |
+| **13** | RSS Feed XML Schema Validity | Local Preview | `xmllint --noout` | **PASS** | [`qa-report/logs/feed-xml.log`](qa-report/logs/feed-xml.log) (Well-formed XML) |
+| **14** | Defense-in-Depth Security Headers | Local Preview | `curl` HTTP Header Assertion | **PASS** | [`qa-report/logs/headers.log`](qa-report/logs/headers.log) (HSTS, CSP, X-Frame-Options: DENY, nosniff) |
+| **15** | Internal Link Integrity | Local Preview | HTTP Status Crawler | **PASS** | [`qa-report/logs/link-check.log`](qa-report/logs/link-check.log) (0 broken links across all routes) |
+| **16** | Lighthouse CI Mobile Audit (3 runs median) | Local Preview | `@lhci/cli` | **PASS** | [`qa-report/logs/lighthouse-medians.log`](qa-report/logs/lighthouse-medians.log) (Perf: 98-99, A11y: 100, BP: 100, SEO: 66) |
+| **17** | Production Non-Destructive Public Audit | Production (`https://sodops.uz`) | `scripts/qa/run-prod.mjs` | **PASS** | [`qa-report/prod-summary.json`](qa-report/prod-summary.json) (20/20 checks passed) |
 
 ---
 
@@ -45,17 +45,17 @@
 
 | Item | Feature | Status | Commit / Details |
 | :--- | :--- | :---: | :--- |
-| **1** | Visual Polish & Spacing | **DONE** | [`3be852a`](file:///home/sodiq/Projects/sodops.uz) — Compact header padding, badge alignment, border subtleties |
-| **2** | Reading Progress Bar | **DONE** | [`3be852a`](file:///home/sodiq/Projects/sodops.uz) — `#reading-progress` element with passive scroll listener |
-| **3** | TOC Active Heading Highlight | **DONE** | [`3be852a`](file:///home/sodiq/Projects/sodops.uz) — `IntersectionObserver` syncing active heading in TOC |
-| **4** | Code-Block UI (Language badges & copy feedback) | **DONE** | [`3be852a`](file:///home/sodiq/Projects/sodops.uz) — Language badge derived from `language-*` class, copy state transitions |
-| **5** | Palette hints, recent posts & groups | **DONE** | [`484fe82`](file:///home/sodiq/Projects/sodops.uz) — Added distinct visual group headers (`Quick Actions`, `Articles & Posts`, `Navigation & Pages`) and footer keyboard hints |
-| **6** | Admin draft autosave | **DONE** | [`484fe82`](file:///home/sodiq/Projects/sodops.uz) — Client-side debounced `localStorage` autosave (`sodops_admin_draft`) with automatic restoration banner |
-| **7** | Unsaved-changes warning | **DONE** | [`484fe82`](file:///home/sodiq/Projects/sodops.uz) — `beforeunload` event handler and navigation guard when editor `isDirty` |
-| **8** | Delete confirmation dialog | **DONE** | [`5beacdc`](file:///home/sodiq/Projects/sodops.uz) — Native confirmation prompt before post deletion |
-| **9** | Slug generation for Uzbek characters | **DONE** | [`484fe82`](file:///home/sodiq/Projects/sodops.uz) — Transliterates `o‘`, `g‘`, `sh`, `ch` and Cyrillic to SEO-friendly Latin slugs |
-| **10** | Live Word Counter & Reading Time | **DONE** | [`484fe82`](file:///home/sodiq/Projects/sodops.uz) — Added live `#word-count-badge` in admin editor toolbar |
-| **11** | Person JSON-LD structured data | **DONE** | [`3be852a`](file:///home/sodiq/Projects/sodops.uz) — Schema.org Person markup injected in `src/pages/index.astro` |
+| **1** | Visual Polish & Spacing | **DONE** | `3be852a` — Compact header padding, badge alignment, border subtleties |
+| **2** | Reading Progress Bar | **DONE** | `3be852a` — `#reading-progress` element with passive scroll listener |
+| **3** | TOC Active Heading Highlight | **DONE** | `3be852a` — `IntersectionObserver` syncing active heading in TOC |
+| **4** | Code-Block UI (Language badges & copy feedback) | **DONE** | `3be852a` — Language badge derived from `language-*` class, copy state transitions |
+| **5** | Palette hints, recent posts & groups | **DONE** | `484fe82` — Added distinct visual group headers (`Quick Actions`, `Articles & Posts`, `Navigation & Pages`) and footer keyboard hints |
+| **6** | Admin draft autosave | **DONE** | `484fe82` — Client-side debounced `localStorage` autosave (`sodops_admin_draft`) with automatic restoration banner |
+| **7** | Unsaved-changes warning | **DONE** | `484fe82` — `beforeunload` event handler and navigation guard when editor `isDirty` |
+| **8** | Delete confirmation dialog | **DONE** | `5beacdc` — Native confirmation prompt before post deletion |
+| **9** | Slug generation for Uzbek characters | **DONE** | `484fe82` — Transliterates `o‘`, `g‘`, `sh`, `ch` and Cyrillic to SEO-friendly Latin slugs |
+| **10** | Live Word Counter & Reading Time | **DONE** | `484fe82` — Added live `#word-count-badge` in admin editor toolbar |
+| **11** | Person JSON-LD structured data | **DONE** | `3be852a` — Schema.org Person markup injected in `src/pages/index.astro` |
 | **12** | Per-Page OpenGraph & Twitter Cards | **DONE** | Full per-page metadata in `src/layouts/BaseLayout.astro` |
 | **13** | Humane 404 Error Page | **DONE** | Helpful fallback navigation and Command Palette search trigger in `src/pages/404.astro` |
 
@@ -119,11 +119,11 @@ All CI workflow commands (`pnpm lint`, `pnpm test`, `pnpm typecheck`, `pnpm buil
 
 ## 6. RFC 9116 security.txt & Build-Time Safety Guard
 
-- [`public/.well-known/security.txt`](file:///home/sodiq/Projects/sodops.uz/public/.well-known/security.txt) satisfies RFC 9116 with `Contact: mailto:TODO(sodiq)` and `Expires: 2027-12-31T23:59:59.000Z`.
-- An Astro integration hook in [`astro.config.mjs`](file:///home/sodiq/Projects/sodops.uz/astro.config.mjs) inspects `SITE_INDEXING`:
+- [`public/.well-known/security.txt`](public/.well-known/security.txt) satisfies RFC 9116 with `Contact: mailto:TODO(sodiq)` and `Expires: 2027-12-31T23:59:59.000Z`.
+- An Astro integration hook in [`astro.config.mjs`](astro.config.mjs) inspects `SITE_INDEXING`:
   - When `SITE_INDEXING=on`, any unresolved `TODO(sodiq)` in `security.txt` or public pages aborts the build with exit code 1.
   - When `SITE_INDEXING=off`, builds complete normally while logging pending placeholders.
-- Verified in [`src/lib/safety.test.ts`](file:///home/sodiq/Projects/sodops.uz/src/lib/safety.test.ts).
+- Verified in [`src/lib/safety.test.ts`](src/lib/safety.test.ts).
 
 ---
 
@@ -148,7 +148,7 @@ All CI workflow commands (`pnpm lint`, `pnpm test`, `pnpm typecheck`, `pnpm buil
   Missing libraries: libevent-2.1-7t64, libmanette-0.2-0
   ```
 - **Reason**: The Linux host environment lacks shared libraries requiring root access (`sudo apt-get install`).
-- **Remediation**: Chromium and Firefox engines executed 100% cleanly across all 130 browser test runs. Physical WebKit testing on iOS Safari is documented in [`QA-CHECKLIST.md`](file:///home/sodiq/Projects/sodops.uz/QA-CHECKLIST.md).
+- **Remediation**: Chromium and Firefox engines executed 100% cleanly across all 130 browser test runs. Physical WebKit testing on iOS Safari is documented in [`QA-CHECKLIST.md`](QA-CHECKLIST.md).
 
 ---
 
